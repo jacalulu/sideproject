@@ -1,0 +1,13 @@
+<html>
+	<head>
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+		<script src="/ajaxs/someeasyajaxAPI.js"></script>
+		<script src="/ajaxs/someotherAPI.js"></script>
+	</head>
+	<body>
+	</body>
+	<script>
+		someeasyajaxAPI.doSomeAction({ db: "blahblah"} , function( db ) { console.log(db)});
+		someotherAPI.someotherfunction(1,0,function( err, allelems) { console.log(allelems) } );
+	</script>
+</html>
