@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Mermaid Dots 🧜‍♀️</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; overflow:hidden; }
+  body {
+    font-family: "Chalkboard SE", "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+    background: linear-gradient(180deg, #2a9fd8 0%, #1272b5 45%, #0a4e8f 100%);
+    color:#fff; user-select:none; -webkit-user-select:none;
+  }
+  #game { position:absolute; inset:0; touch-action:none; }
+
+  /* ---- HUD ---- */
+  #hud {
+    position:absolute; top:0; left:0; right:0; z-index:5;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:8px; padding:10px 12px;
+    pointer-events:none;
+  }
+  .hudBox {
+    background:rgba(255,255,255,0.18); backdrop-filter:blur(6px);
+    border-radius:18px; padding:8px 14px; font-size:17px; font-weight:700;
+    text-shadow:0 1px 2px rgba(0,40,80,.4);
+    display:flex; align-items:center; gap:10px; white-space:nowrap;
+  }
+  .goalChip { display:flex; align-items:center; gap:3px; }
+  .goalChip.done { opacity:.55; }
+  .goalChip .em { font-size:22px; }
+  #btns { display:flex; gap:8px; pointer-events:auto; }
+  .iconBtn {
+    background:rgba(255,255,255,0.18); border:none; color:#fff;
+    width:42px; height:42px; border-radius:50%; font-size:20px; cursor:pointer;
+  }
+  .iconBtn:active { transform:scale(.92); }
+
+  /* ---- Overlays ---- */
+  .overlay {
+    position:absolute; inset:0; z-index:10;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:rgba(4,40,80,0.55); backdrop-filter:blur(4px);
+    text-align:center; padding:24px; gap:14px;
+  }
+  .overlay.hidden { display:none; }
+  .card {
+    background:linear-gradient(180deg,#ffffff, #dff3ff);
+    color:#0a4e8f; border-radius:28px; padding:30px 34px; max-width:340px;
+    box-shadow:0 12px 40px rgba(0,20,50,.45);
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .card h1 { font-size:32px; line-height:1.1; }
+  .card h2 { font-size:26px; }
+  .card p  { font-size:17px; line-height:1.35; }
+  .card .big { font-size:56px; line-height:1; }
+  .promise { font-size:13px; opacity:.75; }
+  .btn {
+    border:none; cursor:pointer; font-family:inherit; font-weight:800;
+    font-size:21px; color:#fff; padding:13px 34px; border-radius:999px;
+    background:linear-gradient(180deg,#ff7bac,#f5498b);
+    box-shadow:0 5px 0 #c22d68; margin-top:4px;
+  }
+  .btn:active { transform:translateY(3px); box-shadow:0 2px 0 #c22d68; }
+  .btn.blue { background:linear-gradient(180deg,#41b6ef,#1e8fd0); box-shadow:0 5px 0 #10639a; }
+  .btn.blue:active { box-shadow:0 2px 0 #10639a; }
+
+  #toast {
+    position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) scale(0);
+    z-index:8; font-size:44px; font-weight:900; letter-spacing:2px;
+    color:#fff; text-shadow:0 3px 0 rgba(10,60,110,.6), 0 0 24px rgba(255,255,255,.55);
+    pointer-events:none; transition:transform .25s cubic-bezier(.2,1.6,.4,1);
+  }
+  #toast.show { transform:translate(-50%,-50%) scale(1); }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="hudBox" id="levelBox">🧜‍♀️ Level 1</div>
+  <div class="hudBox" id="goalsBox"></div>
+  <div class="hudBox" id="movesBox">🌊 30</div>
+  <div id="btns">
+    <button class="iconBtn" id="muteBtn" title="Sound">🔊</button>
+    <button class="iconBtn" id="retryBtn" title="Restart level">↻</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div class="overlay" id="startOverlay">
+  <div class="card">
+    <div class="big">🧜‍♀️</div>
+    <h1>Mermaid Dots</h1>
+    <p>Connect the sea treasures to help the mermaid collect them! Draw a line between <b>2 or more matching</b> treasures. Make a <b>loop</b> for a big SPLASH!</p>
+    <button class="btn" id="playBtn">Play! 🐚</button>
+    <div class="promise">💙 No ads · No purchases · Just fun 💙</div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="winOverlay">
+  <div class="card">
+    <div class="big">🎉🧜‍♀️🎉</div>
+    <h2 id="winTitle">Level Complete!</h2>
+    <p>The mermaid is so happy — you found all the treasures!</p>
+    <button class="btn" id="nextBtn">Next Level ➜</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="loseOverlay">
+  <div class="card">
+    <div class="big">🫧🧜‍♀️🫧</div>
+    <h2>So close!</h2>
+    <p>Out of waves — but mermaids never give up. Want another try?</p>
+    <button class="btn blue" id="againBtn">Try Again 💪</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Mermaid Dots — a friendly, ad-free dot connecting game.
+   Everything lives in this one file: open it and play.
+   ============================================================ */
+
+const TYPES = [
+  { key:"star",  emoji:"⭐", color:"#ffb703", bg:"#ffe9b8" },
+  { key:"shell", emoji:"🐚", color:"#ff5d8f", bg:"#ffd9e3" },
+  { key:"fish",  emoji:"🐠", color:"#22a3c9", bg:"#c9eef9" },
+  { key:"weed",  emoji:"🌿", color:"#43b02a", bg:"#d9f5cf" },
+  { key:"octo",  emoji:"🐙", color:"#8b4fe0", bg:"#e7d9fb" },
+];
+
+const COLS = 6, ROWS = 6;
+const MIN_PATH = 2;
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const $ = id => document.getElementById(id);
+const levelBox = $("levelBox"), goalsBox = $("goalsBox"), movesBox = $("movesBox");
+const toastEl = $("toast");
+
+let W = 0, H = 0, DPR = 1;
+let cell = 60, boardX = 0, boardY = 0, hudH = 70;
+
+let level = parseInt(localStorage.getItem("mermaidDots.level") || "1", 10);
+let muted = localStorage.getItem("mermaidDots.muted") === "1";
+
+let grid = [];            // grid[r][c] = {type, yOff, vy, scale} | null
+let activeTypes = [];
+let goals = [];           // [{type, left}]
+let moves = 0;
+let state = "menu";       // menu | idle | drag | fall | over
+let path = [];            // [{r,c}]
+let loopClosed = false;
+let pointerPos = null;
+let particles = [];
+let bubbles = [];
+let lastT = 0;
+
+/* ---------- deterministic goals per level ---------- */
+function mulberry32(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function levelConfig(n){
+  const rnd = mulberry32(n * 7919);
+  const typeCount = n < 4 ? 4 : 5;
+  const active = TYPES.slice(0, typeCount);
+  const shuffled = active.slice().sort(() => rnd() - 0.5);
+  const amount = Math.min(8 + n * 2, 20);
+  return {
+    active,
+    goals: shuffled.slice(0, 2).map(t => ({ type: t, left: amount })),
+    moves: 30,
+  };
+}
+
+/* ---------- setup / layout ---------- */
+function resize(){
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width = W * DPR; canvas.height = H * DPR;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  hudH = document.getElementById("hud").offsetHeight + 6;
+  cell = Math.min((W - 16) / COLS, (H - hudH - 24) / ROWS, 96);
+  boardX = (W - cell * COLS) / 2;
+  boardY = hudH + (H - hudH - cell * ROWS) / 2;
+}
+window.addEventListener("resize", resize);
+
+function cx(c){ return boardX + (c + 0.5) * cell; }
+function cy(r){ return boardY + (r + 0.5) * cell; }
+
+function newDot(){
+  return { type: activeTypes[Math.floor(Math.random() * activeTypes.length)],
+           yOff: 0, vy: 0, scale: 1 };
+}
+
+function startLevel(){
+  const cfg = levelConfig(level);
+  activeTypes = cfg.active;
+  goals = cfg.goals.map(g => ({ ...g }));
+  moves = cfg.moves;
+  grid = [];
+  for (let r = 0; r < ROWS; r++){
+    grid.push([]);
+    for (let c = 0; c < COLS; c++){
+      const d = newDot();
+      d.yOff = -(ROWS - r + 2) * cell - Math.random() * cell * 2; // rain in from above
+      grid[r].push(d);
+    }
+  }
+  ensurePlayable();
+  path = []; loopClosed = false; particles = [];
+  state = "fall";
+  updateHud();
+}
+
+function updateHud(){
+  levelBox.textContent = "🧜‍♀️ Level " + level;
+  movesBox.textContent = "🌊 " + moves;
+  goalsBox.innerHTML = goals.map(g =>
+    `<span class="goalChip${g.left <= 0 ? " done" : ""}">` +
+    `<span class="em">${g.type.emoji}</span>${g.left <= 0 ? "✔" : g.left}</span>`
+  ).join("");
+}
+
+/* ---------- audio (gentle pops, no libraries) ---------- */
+let audio = null;
+function ensureAudio(){
+  if (!audio){
+    try { audio = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ audio = false; }
+  }
+  if (audio && audio.state === "suspended") audio.resume();
+}
+const SCALE_HZ = [392, 440, 494, 587, 659, 784, 880, 988, 1175, 1319]; // pentatonic-ish
+function tone(freq, dur = 0.18, type = "sine", vol = 0.22){
+  if (muted || !audio) return;
+  const t = audio.currentTime;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(audio.destination);
+  o.start(t); o.stop(t + dur);
+}
+function popNote(i){ tone(SCALE_HZ[Math.min(i, SCALE_HZ.length - 1)], 0.16); }
+function splashSound(){ [0,1,2,3].forEach(i => setTimeout(() => tone(523 + i*131, 0.3, "triangle", 0.18), i*70)); }
+function winSound(){ [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f, 0.35, "triangle", 0.2), i*130)); }
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 900);
+}
+
+/* ---------- input ---------- */
+function cellFromPoint(x, y, radius){
+  const c = Math.floor((x - boardX) / cell);
+  const r = Math.floor((y - boardY) / cell);
+  if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return null;
+  const dx = x - cx(c), dy = y - cy(r);
+  if (dx*dx + dy*dy > (cell*radius)*(cell*radius)) return null;
+  return { r, c };
+}
+const sameCell = (a, b) => a && b && a.r === b.r && a.c === b.c;
+const adjacent = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.c - b.c) === 1;
+const inPath = p => path.some(q => sameCell(p, q));
+
+canvas.addEventListener("pointerdown", e => {
+  ensureAudio();
+  if (state !== "idle") return;
+  const p = cellFromPoint(e.clientX, e.clientY, 0.48);
+  if (!p || !grid[p.r][p.c]) return;
+  canvas.setPointerCapture(e.pointerId);
+  path = [p]; loopClosed = false;
+  pointerPos = { x: e.clientX, y: e.clientY };
+  state = "drag";
+  popNote(0);
+});
+
+canvas.addEventListener("pointermove", e => {
+  if (state !== "drag") return;
+  pointerPos = { x: e.clientX, y: e.clientY };
+  const p = cellFromPoint(e.clientX, e.clientY, 0.42);
+  if (!p) return;
+  const last = path[path.length - 1];
+  if (sameCell(p, last)) return;
+
+  // backtrack
+  if (path.length >= 2 && sameCell(p, path[path.length - 2])){
+    path.pop();
+    loopClosed = hasDuplicate(path);
+    return;
+  }
+  if (loopClosed) return; // one loop is plenty — release for the splash!
+  const type = grid[path[0].r][path[0].c].type;
+  const dot = grid[p.r][p.c];
+  if (!dot || dot.type !== type || !adjacent(p, last)) return;
+
+  if (inPath(p)){
+    if (path.length >= 3){ // closing a loop
+      path.push(p);
+      loopClosed = true;
+      popNote(path.length - 1);
+      toast("LOOP! 🫧");
+    }
+    return;
+  }
+  path.push(p);
+  popNote(path.length - 1);
+});
+
+function hasDuplicate(arr){
+  const seen = new Set();
+  for (const p of arr){
+    const k = p.r + "," + p.c;
+    if (seen.has(k)) return true;
+    seen.add(k);
+  }
+  return false;
+}
+
+canvas.addEventListener("pointerup", () => {
+  if (state !== "drag") return;
+  if (path.length >= MIN_PATH) clearPath();
+  else { path = []; state = "idle"; }
+  pointerPos = null;
+});
+canvas.addEventListener("pointercancel", () => {
+  if (state === "drag"){ path = []; state = "idle"; pointerPos = null; }
+});
+
+/* ---------- game flow ---------- */
+function clearPath(){
+  const type = grid[path[0].r][path[0].c].type;
+  const targets = [];
+  if (loopClosed){
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        if (grid[r][c] && grid[r][c].type === type) targets.push({ r, c });
+    toast("SPLASH! 🌊");
+    splashSound();
+  } else {
+    const seen = new Set();
+    for (const p of path){
+      const k = p.r + "," + p.c;
+      if (!seen.has(k)){ seen.add(k); targets.push(p); }
+    }
+  }
+
+  for (const p of targets){
+    burst(cx(p.c), cy(p.r) + grid[p.r][p.c].yOff, type);
+    grid[p.r][p.c] = null;
+  }
+  const goal = goals.find(g => g.type.key === type.key);
+  if (goal) goal.left = Math.max(0, goal.left - targets.length);
+  moves--;
+
+  path = []; loopClosed = false;
+  applyGravity();
+  state = "fall";
+  updateHud();
+}
+
+function applyGravity(){
+  for (let c = 0; c < COLS; c++){
+    const stack = [];
+    for (let r = ROWS - 1; r >= 0; r--)
+      if (grid[r][c]) stack.push({ dot: grid[r][c], fromR: r });
+    for (let r = ROWS - 1; r >= 0; r--){
+      const i = ROWS - 1 - r;
+      if (i < stack.length){
+        const { dot, fromR } = stack[i];
+        dot.yOff += (fromR - r) * cell; // keep on-screen position, retarget row
+        grid[r][c] = dot;
+      } else {
+        const d = newDot();
+        d.yOff = -(r + 1.5) * cell - boardY;
+        grid[r][c] = d;
+      }
+    }
+  }
+}
+
+function ensurePlayable(){
+  let guard = 0;
+  while (!hasAnyMove() && guard++ < 50){
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++)
+        if (grid[r][c]) grid[r][c].type = activeTypes[Math.floor(Math.random() * activeTypes.length)];
+  }
+}
+
+function hasAnyMove(){
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++){
+      const d = grid[r][c];
+      if (!d) continue;
+      if (c + 1 < COLS && grid[r][c+1] && grid[r][c+1].type === d.type) return true;
+      if (r + 1 < ROWS && grid[r+1][c] && grid[r+1][c].type === d.type) return true;
+    }
+  return false;
+}
+
+function afterSettle(){
+  if (goals.every(g => g.left <= 0)){
+    state = "over";
+    winSound();
+    celebrate();
+    setTimeout(() => $("winOverlay").classList.remove("hidden"), 700);
+    level++;
+    localStorage.setItem("mermaidDots.level", String(level));
+    return;
+  }
+  if (moves <= 0){
+    state = "over";
+    setTimeout(() => $("loseOverlay").classList.remove("hidden"), 500);
+    return;
+  }
+  if (!hasAnyMove()){
+    toast("Shuffle! 🌀");
+    ensurePlayable();
+  }
+  state = "idle";
+}
+
+/* ---------- particles & bubbles ---------- */
+function burst(x, y, type){
+  for (let i = 0; i < 8; i++){
+    const a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 160;
+    particles.push({
+      x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+      life: 0.7 + Math.random() * 0.3, t: 0,
+      color: type.color, r: 3 + Math.random() * 4,
+      bubble: Math.random() < 0.35,
+    });
+  }
+}
+function celebrate(){
+  for (let i = 0; i < 70; i++){
+    const t = TYPES[i % TYPES.length];
+    particles.push({
+      x: Math.random() * W, y: H + 20,
+      vx: (Math.random() - 0.5) * 120, vy: -(220 + Math.random() * 380),
+      life: 1.6 + Math.random(), t: 0, color: t.color,
+      r: 4 + Math.random() * 6, bubble: Math.random() < 0.5,
+    });
+  }
+}
+function initBubbles(){
+  bubbles = [];
+  for (let i = 0; i < 22; i++){
+    bubbles.push({
+      x: Math.random() * W, y: Math.random() * H,
+      r: 3 + Math.random() * 9, sp: 12 + Math.random() * 28,
+      sway: Math.random() * Math.PI * 2,
+    });
+  }
+}
+
+/* ---------- render ---------- */
+function drawDot(d, x, y, t){
+  const bob = state === "over" ? 0 : Math.sin(t * 1.6 + x * 0.05 + y * 0.03) * 1.5;
+  y += d.yOff + bob;
+  const selected = state === "drag" && grid[path[0].r] && inPathXY(d);
+  const pulse = selected ? 1 + Math.sin(t * 10) * 0.05 : 1;
+  const R = cell * 0.38 * d.scale * pulse;
+
+  ctx.beginPath();
+  ctx.arc(x, y + 2, R, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,30,60,0.25)";
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, y, R, 0, Math.PI * 2);
+  ctx.fillStyle = d.type.bg;
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = d.type.color;
+  ctx.stroke();
+
+  ctx.font = Math.round(R * 1.05) + "px serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(d.type.emoji, x, y + R * 0.06);
+}
+function inPathXY(dot){
+  for (const p of path) if (grid[p.r][p.c] === dot) return true;
+  return false;
+}
+
+function render(t){
+  ctx.clearRect(0, 0, W, H);
+
+  // rising background bubbles
+  ctx.fillStyle = "rgba(255,255,255,0.16)";
+  for (const b of bubbles){
+    ctx.beginPath();
+    ctx.arc(b.x + Math.sin(t + b.sway) * 8, b.y, b.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // board backdrop
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  roundRect(boardX - 8, boardY - 8, cell * COLS + 16, cell * ROWS + 16, 24);
+  ctx.fill();
+
+  // connection line
+  if (state === "drag" && path.length){
+    const type = grid[path[0].r][path[0].c].type;
+    ctx.lineWidth = cell * 0.16;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = type.color;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.moveTo(cx(path[0].c), cy(path[0].r));
+    for (let i = 1; i < path.length; i++) ctx.lineTo(cx(path[i].c), cy(path[i].r));
+    if (pointerPos && !loopClosed) ctx.lineTo(pointerPos.x, pointerPos.y);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // dots (loop preview: highlight all of the color)
+  const loopType = loopClosed && path.length ? grid[path[0].r][path[0].c].type : null;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++){
+      const d = grid[r][c];
+      if (!d) continue;
+      if (loopType && d.type === loopType) d.scale = 1.12;
+      else d.scale += (1 - d.scale) * 0.2;
+      drawDot(d, cx(c), cy(r), t);
+    }
+
+  // particles
+  for (const p of particles){
+    const a = Math.max(0, 1 - p.t / p.life);
+    ctx.globalAlpha = a;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    if (p.bubble){
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.stroke();
+    } else {
+      ctx.fillStyle = p.color; ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+function roundRect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+/* ---------- main loop ---------- */
+function frame(ms){
+  const t = ms / 1000;
+  const dt = Math.min(0.05, t - lastT || 0.016);
+  lastT = t;
+
+  // falling dots
+  if (state === "fall"){
+    let settled = true;
+    for (let r = 0; r < ROWS; r++)
+      for (let c = 0; c < COLS; c++){
+        const d = grid[r][c];
+        if (!d) continue;
+        if (d.yOff !== 0){
+          d.vy += 2600 * dt;             // underwater-gentle gravity
+          d.yOff += d.vy * dt;
+          if (d.yOff >= 0){ d.yOff = 0; d.vy = 0; }
+          else settled = false;
+        }
+      }
+    if (settled) afterSettle();
+  }
+
+  // particles
+  for (const p of particles){
+    p.t += dt;
+    p.vy += (p.bubble ? -60 : 500) * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+  }
+  particles = particles.filter(p => p.t < p.life);
+
+  // ambient bubbles
+  for (const b of bubbles){
+    b.y -= b.sp * dt;
+    if (b.y < -12){ b.y = H + 12; b.x = Math.random() * W; }
+  }
+
+  render(t);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- buttons ---------- */
+$("playBtn").addEventListener("click", () => {
+  ensureAudio();
+  $("startOverlay").classList.add("hidden");
+  startLevel();
+});
+$("nextBtn").addEventListener("click", () => {
+  $("winOverlay").classList.add("hidden");
+  startLevel();
+});
+$("againBtn").addEventListener("click", () => {
+  $("loseOverlay").classList.add("hidden");
+  startLevel();
+});
+$("retryBtn").addEventListener("click", () => {
+  if (state === "idle" || state === "fall") startLevel();
+});
+function setMuteIcon(){ $("muteBtn").textContent = muted ? "🔇" : "🔊"; }
+$("muteBtn").addEventListener("click", () => {
+  muted = !muted;
+  localStorage.setItem("mermaidDots.muted", muted ? "1" : "0");
+  setMuteIcon();
+  if (!muted){ ensureAudio(); popNote(3); }
+});
+
+/* ---------- go ---------- */
+for (let r = 0; r < ROWS; r++) grid.push(new Array(COLS).fill(null));
+resize();
+initBubbles();
+setMuteIcon();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
