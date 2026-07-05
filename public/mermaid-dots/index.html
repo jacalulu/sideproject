@@ -21,12 +21,11 @@
 
   /* ---- liquid glass surfaces ---- */
   .glass {
-    background:rgba(255,255,255,0.13);
-    backdrop-filter:blur(20px) saturate(1.7);
-    -webkit-backdrop-filter:blur(20px) saturate(1.7);
-    border:1px solid rgba(255,255,255,0.32);
-    border-top-color:rgba(255,255,255,0.65);
-    box-shadow:0 8px 32px rgba(4,20,60,0.28), inset 0 1px 0 rgba(255,255,255,0.45);
+    background:rgba(9,30,66,0.22);
+    backdrop-filter:blur(18px) saturate(1.35);
+    -webkit-backdrop-filter:blur(18px) saturate(1.35);
+    border:1px solid rgba(255,255,255,0.20);
+    box-shadow:0 4px 18px rgba(4,20,60,0.18);
   }
 
   /* ---- HUD ---- */
@@ -36,9 +35,9 @@
     gap:8px; padding:10px 12px; pointer-events:none;
   }
   .hudBox {
-    border-radius:20px; padding:7px 14px; font-size:17px; letter-spacing:.3px;
-    text-shadow:0 1px 3px rgba(0,20,60,.55);
-    display:flex; align-items:center; gap:10px; white-space:nowrap;
+    border-radius:18px; padding:6px 13px; font-size:15.5px; letter-spacing:.3px;
+    text-shadow:0 1px 2px rgba(0,20,60,.45);
+    display:flex; align-items:center; gap:9px; white-space:nowrap;
   }
   #levelBox { flex-direction:column; gap:0; padding:5px 16px; line-height:1.05; }
   #levelBox .zone { font-size:11px; opacity:.9; letter-spacing:.5px; }
@@ -67,14 +66,13 @@
     transition:opacity .4s, transform .4s cubic-bezier(.2,1.5,.4,1);
   }
   #banner.show { opacity:1; transform:translateY(0) scale(1); }
-  #banner .lv { font-size:52px; letter-spacing:1px;
-    text-shadow:0 4px 0 rgba(8,40,90,.45), 0 0 30px rgba(140,225,255,.6); }
-  #banner .zn { font-size:21px; opacity:.95; text-shadow:0 2px 6px rgba(0,20,60,.6); }
+  #banner .lv { font-size:38px; letter-spacing:1px; text-shadow:0 2px 8px rgba(8,40,90,.55); }
+  #banner .zn { font-size:18px; opacity:.95; text-shadow:0 2px 6px rgba(0,20,60,.55); }
 
   #toast {
     position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) scale(0);
-    z-index:8; font-size:42px; letter-spacing:2px; text-align:center; white-space:nowrap;
-    color:#fff; text-shadow:0 3px 0 rgba(10,60,110,.6), 0 0 26px rgba(160,235,255,.7);
+    z-index:8; font-size:32px; letter-spacing:1.5px; text-align:center; white-space:nowrap;
+    color:#fff; text-shadow:0 2px 10px rgba(10,50,100,.65);
     pointer-events:none; transition:transform .25s cubic-bezier(.2,1.6,.4,1);
   }
   #toast.small { font-size:21px; white-space:normal; max-width:82vw; line-height:1.3; letter-spacing:.5px; }
@@ -108,8 +106,8 @@
   .pick {
     border-radius:22px; padding:10px 12px 8px; cursor:pointer;
     display:flex; flex-direction:column; align-items:center; gap:4px;
-    border:2.5px solid rgba(255,255,255,0.25);
-    background:rgba(255,255,255,0.10); transition:transform .15s, border-color .15s;
+    border:2px solid rgba(255,255,255,0.18);
+    background:rgba(255,255,255,0.07); transition:transform .15s, border-color .15s;
   }
   .pick img { height:108px; filter:drop-shadow(0 6px 10px rgba(0,20,60,.4)); }
   .pick span { font-size:15px; }
@@ -124,18 +122,17 @@
 
   .btn {
     border:none; cursor:pointer; font-family:inherit;
-    font-size:21px; color:#fff; padding:13px 38px; border-radius:999px; letter-spacing:.5px;
-    background:linear-gradient(180deg,#ff8fb8 0%,#f5498b 55%,#e93a7e 100%);
-    box-shadow:0 5px 0 #bf2a66, 0 10px 24px rgba(233,58,126,.45), inset 0 2px 0 rgba(255,255,255,.5);
+    font-size:19px; color:#fff; padding:13px 38px; border-radius:999px; letter-spacing:.5px;
+    background:linear-gradient(180deg,#fb7aa8, #ef5590);
+    box-shadow:0 6px 16px rgba(214,55,116,.38);
     margin-top:2px;
   }
   .btn:disabled { opacity:.6; }
-  .btn:active { transform:translateY(3px); box-shadow:0 2px 0 #bf2a66; }
+  .btn:active { transform:translateY(2px) scale(.98); }
   .btn.blue {
-    background:linear-gradient(180deg,#5cc6f7 0%,#1e8fd0 55%,#1279b6 100%);
-    box-shadow:0 5px 0 #0d5d92, 0 10px 24px rgba(30,143,208,.45), inset 0 2px 0 rgba(255,255,255,.5);
+    background:linear-gradient(180deg,#4db4ec, #1e88c9);
+    box-shadow:0 6px 16px rgba(24,110,175,.38);
   }
-  .btn.blue:active { box-shadow:0 2px 0 #0d5d92; }
 
   .winRow { display:flex; align-items:flex-end; gap:6px; }
   .winRow .heroImg { height:168px; }
@@ -337,40 +334,19 @@ function bakeSprites(){
     c.scale(DPR, DPR); c.translate(SPR / 2, SPR / 2);
     const R = cell * 0.44;
 
-    // soft drop shadow for separation from the frost panel
-    const sh = c.createRadialGradient(0, R * 0.18, R * 0.3, 0, R * 0.18, R * 1.08);
-    sh.addColorStop(0, "rgba(0,25,60,0.32)");
-    sh.addColorStop(1, "rgba(0,25,60,0)");
-    c.fillStyle = sh;
-    c.beginPath(); c.arc(0, R * 0.18, R * 1.08, 0, TAU); c.fill();
-
-    // glass bubble
-    const g = c.createRadialGradient(-R * 0.35, -R * 0.45, R * 0.1, 0, 0, R * 1.05);
-    g.addColorStop(0, "rgba(255,255,255,0.46)");
-    g.addColorStop(0.65, "rgba(255,255,255,0.15)");
-    g.addColorStop(1, "rgba(255,255,255,0.24)");
-    c.beginPath(); c.arc(0, 0, R, 0, TAU);
-    c.fillStyle = g; c.fill();
-    // liquid-glass edge light: bright top rim fading to faint bottom
-    const rim = c.createLinearGradient(0, -R, 0, R);
-    rim.addColorStop(0, "rgba(255,255,255,0.95)");
-    rim.addColorStop(0.5, "rgba(255,255,255,0.30)");
-    rim.addColorStop(1, "rgba(255,255,255,0.55)");
-    c.strokeStyle = rim; c.lineWidth = 2;
-    c.beginPath(); c.arc(0, 0, R - 1, 0, TAU); c.stroke();
-
-    // creature render, contain-fit
+    // just the creature, resting on a soft contact shadow — no chrome
     const im = IMGS[t.img];
     if (im && im.width){
-      const box = R * 1.44;
+      const box = cell * 0.64;
       const s = Math.min(box / im.width, box / im.height);
       const w = im.width * s, h = im.height * s;
-      c.drawImage(im, -w / 2, -h / 2 + R * 0.02, w, h);
+      const sh = c.createRadialGradient(0, h * 0.42, 0, 0, h * 0.42, w * 0.42);
+      sh.addColorStop(0, "rgba(6,26,58,0.30)");
+      sh.addColorStop(1, "rgba(6,26,58,0)");
+      c.fillStyle = sh;
+      c.beginPath(); c.ellipse(0, h * 0.42, w * 0.42, w * 0.16, 0, 0, TAU); c.fill();
+      c.drawImage(im, -w / 2, -h / 2, w, h);
     }
-
-    // gloss streak on top of everything
-    c.fillStyle = "rgba(255,255,255,0.35)";
-    c.beginPath(); c.ellipse(-R * 0.34, -R * 0.52, R * 0.30, R * 0.13, -0.5, 0, TAU); c.fill();
     sprites[t.key] = cv;
 
     // selection glow
@@ -379,7 +355,7 @@ function bakeSprites(){
     const gg = gv.getContext("2d");
     gg.scale(DPR, DPR); gg.translate(SPR / 2, SPR / 2);
     const gr = gg.createRadialGradient(0, 0, cell * 0.2, 0, 0, cell * 0.72);
-    gr.addColorStop(0, rgba(t.main, 0.6));
+    gr.addColorStop(0, rgba(t.main, 0.42));
     gr.addColorStop(1, rgba(t.main, 0));
     gg.fillStyle = gr;
     gg.beginPath(); gg.arc(0, 0, cell * 0.72, 0, TAU); gg.fill();
@@ -390,21 +366,16 @@ function bakeSprites(){
   bv.width = bv.height = Math.ceil(SPR * DPR);
   const b = bv.getContext("2d");
   b.scale(DPR, DPR); b.translate(SPR / 2, SPR / 2);
-  const B = cell * 0.55;
+  const B = cell * 0.46;
   const bg = b.createRadialGradient(-B * 0.3, -B * 0.35, B * 0.1, 0, 0, B);
-  bg.addColorStop(0, "rgba(200,160,255,0.16)");
-  bg.addColorStop(0.7, "rgba(175,125,245,0.26)");
-  bg.addColorStop(1, "rgba(150,90,235,0.48)");
+  bg.addColorStop(0, "rgba(220,205,255,0.06)");
+  bg.addColorStop(0.75, "rgba(200,175,250,0.12)");
+  bg.addColorStop(1, "rgba(185,155,245,0.30)");
   b.fillStyle = bg;
   b.beginPath(); b.arc(0, 0, B, 0, TAU); b.fill();
-  b.strokeStyle = "rgba(225,200,255,0.95)"; b.lineWidth = 3; b.stroke();
-  b.strokeStyle = "rgba(240,225,255,0.95)"; b.lineWidth = 3; b.lineCap = "round";
-  b.beginPath(); b.arc(0, 0, B * 0.76, -2.4, -1.5); b.stroke();
-  b.beginPath(); b.arc(0, 0, B * 0.76, -1.25, -1.1); b.stroke();
-  const bs = b.createRadialGradient(B*0.42, B*0.42, 0, B*0.42, B*0.42, B*0.28);
-  bs.addColorStop(0, "rgba(255,255,255,0.9)"); bs.addColorStop(1, "rgba(255,255,255,0)");
-  b.fillStyle = bs;
-  b.beginPath(); b.arc(B*0.42, B*0.42, B*0.28, 0, TAU); b.fill();
+  b.strokeStyle = "rgba(235,222,255,0.8)"; b.lineWidth = 1.5; b.stroke();
+  b.strokeStyle = "rgba(255,255,255,0.75)"; b.lineWidth = 2; b.lineCap = "round";
+  b.beginPath(); b.arc(0, 0, B * 0.78, -2.35, -1.65); b.stroke();
   bubbleSprite = bv;
 }
 
@@ -443,14 +414,8 @@ function makeFrost(){
   oc.scale(DPR, DPR);
   oc.imageSmoothingEnabled = true; oc.imageSmoothingQuality = "high";
   oc.drawImage(mid, 0, 0, w, h);
-  // frost tint: dark water glass so the bright tokens pop, plus a top sheen
-  oc.fillStyle = "rgba(10,32,72,0.30)";
-  oc.fillRect(0, 0, w, h);
-  const sheen = oc.createLinearGradient(0, 0, 0, h);
-  sheen.addColorStop(0, "rgba(255,255,255,0.15)");
-  sheen.addColorStop(0.25, "rgba(255,255,255,0.03)");
-  sheen.addColorStop(1, "rgba(255,255,255,0.07)");
-  oc.fillStyle = sheen;
+  // quiet frost: one gentle dark-water tint, nothing else
+  oc.fillStyle = "rgba(10,32,72,0.24)";
   oc.fillRect(0, 0, w, h);
   frost = { canvas: out, x, y, w, h };
 }
@@ -792,7 +757,7 @@ function celebrate(){
 }
 function initBubbles(){
   bubbles = [];
-  for (let i = 0; i < 22; i++){
+  for (let i = 0; i < 10; i++){
     bubbles.push({
       x: Math.random() * W, y: Math.random() * H,
       r: 2 + Math.random() * 7, sp: 10 + Math.random() * 24,
@@ -832,24 +797,8 @@ function render(t){
     ctx.fillStyle = "#123a6e"; ctx.fillRect(0, 0, W, H);
   }
 
-  // gentle extra light rays (the paintings have their own; this adds life)
-  for (let i = 0; i < 2; i++){
-    ctx.save();
-    ctx.translate(W * (0.3 + i * 0.4), -40);
-    ctx.rotate(0.2 + i * 0.15 + Math.sin(t * 0.13 + i * 2) * 0.06);
-    const rg = ctx.createLinearGradient(0, 0, 0, H);
-    rg.addColorStop(0, "rgba(255,255,255,0.07)");
-    rg.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = rg;
-    ctx.beginPath();
-    ctx.moveTo(-26, 0); ctx.lineTo(26, 0);
-    ctx.lineTo(96, H * 1.15); ctx.lineTo(-96, H * 1.15);
-    ctx.fill();
-    ctx.restore();
-  }
-
-  // ambient rising bubbles
-  ctx.fillStyle = "rgba(255,255,255,0.13)";
+  // ambient rising bubbles (the paintings carry the atmosphere; this just adds life)
+  ctx.fillStyle = "rgba(255,255,255,0.09)";
   for (const b of bubbles){
     ctx.beginPath();
     ctx.arc(b.x + Math.sin(t + b.sway) * 8, b.y, b.r, 0, TAU);
@@ -864,12 +813,7 @@ function render(t){
       ctx.clip();
       ctx.drawImage(frost.canvas, frost.x, frost.y, frost.w, frost.h);
       ctx.restore();
-      // liquid-glass edge light
-      const edge = ctx.createLinearGradient(0, frost.y, 0, frost.y + frost.h);
-      edge.addColorStop(0, "rgba(255,255,255,0.85)");
-      edge.addColorStop(0.4, "rgba(255,255,255,0.22)");
-      edge.addColorStop(1, "rgba(255,255,255,0.45)");
-      ctx.strokeStyle = edge; ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 1;
       roundRectPath(frost.x, frost.y, frost.w, frost.h, FROST_R);
       ctx.stroke();
     }
