@@ -59,16 +59,6 @@
     .iconBtn { width:36px; height:36px; font-size:16px; }
   }
 
-  /* ---- level banner ---- */
-  #banner {
-    position:absolute; left:0; right:0; top:26%; z-index:7; text-align:center;
-    pointer-events:none; opacity:0; transform:translateY(14px) scale(.9);
-    transition:opacity .4s, transform .4s cubic-bezier(.2,1.5,.4,1);
-  }
-  #banner.show { opacity:1; transform:translateY(0) scale(1); }
-  #banner .lv { font-size:38px; letter-spacing:1px; text-shadow:0 2px 8px rgba(8,40,90,.55); }
-  #banner .zn { font-size:18px; opacity:.95; text-shadow:0 2px 6px rgba(0,20,60,.55); }
-
   #toast {
     position:absolute; left:50%; top:38%; transform:translate(-50%,-50%) scale(0);
     z-index:8; font-size:32px; letter-spacing:1.5px; text-align:center; white-space:nowrap;
@@ -104,14 +94,22 @@
 
   .pickRow { display:flex; gap:14px; margin-top:2px; }
   .pick {
-    border-radius:22px; padding:10px 12px 8px; cursor:pointer;
-    display:flex; flex-direction:column; align-items:center; gap:4px;
+    border-radius:22px; padding:10px 14px 8px; cursor:pointer; width:132px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
     border:2px solid rgba(255,255,255,0.18);
     background:rgba(255,255,255,0.07); transition:transform .15s, border-color .15s;
   }
-  .pick img { height:108px; filter:drop-shadow(0 6px 10px rgba(0,20,60,.4)); }
+  .pick img { width:100px; height:104px; object-fit:contain;
+    filter:drop-shadow(0 6px 10px rgba(0,20,60,.4)); }
   .pick span { font-size:15px; }
   .pick.sel { border-color:#ff9dc0; background:rgba(255,255,255,0.20); transform:scale(1.04); }
+
+  /* ---- pre-level fun fact card ---- */
+  #factLevel { font-size:13px; opacity:.85; letter-spacing:.6px; }
+  #factImg { height:116px; }
+  #factHost { font-size:17px; letter-spacing:.3px; }
+  #factText { min-height:64px; display:flex; align-items:center; }
+  .factBtns { display:flex; gap:10px; align-items:center; }
 
   .stars { font-size:38px; letter-spacing:6px; line-height:1; }
   .stars span { display:inline-block; opacity:.25; transform:scale(.6); }
@@ -153,7 +151,6 @@
   </div>
 </div>
 
-<div id="banner"><div class="lv" id="bannerLv"></div><div class="zn" id="bannerZn"></div></div>
 <div id="toast"></div>
 
 <div class="overlay" id="startOverlay">
@@ -188,6 +185,19 @@
     <h2>So close!</h2>
     <p>Out of waves — but Finn believes in you. Mermaids never give up!</p>
     <button class="btn blue" id="againBtn">Try Again 💪</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="factOverlay">
+  <div class="card glass">
+    <div id="factLevel"></div>
+    <img class="chara" id="factImg" alt="">
+    <div id="factHost"></div>
+    <p id="factText"></p>
+    <div class="factBtns">
+      <button class="btn" id="factBtn">Let's go! 🌊</button>
+      <button class="iconBtn glass" id="factSpeak" title="Read it to me">🔊</button>
+    </div>
   </div>
 </div>
 
@@ -461,12 +471,11 @@ function startLevel(){
   path = []; loopClosed = false; particles = []; rings = [];
   state = "fall";
   updateHud();
-  showBanner("Level " + level, zone.em + " " + zone.name);
-  if (levelCfg.traps && !store.get("mermaidDots.seenMorgana","")){
-    setTimeout(() => {
-      $("storyOverlay").classList.remove("hidden");
-      store.set("mermaidDots.seenMorgana", "1");
-    }, 1100);
+  if (level !== lastFactLevel){
+    lastFactLevel = level;
+    showFact();          // Morgana's story (level 8) chains after dismissal
+  } else {
+    maybeMorganaStory(); // retry of a trap level with the story still unseen
   }
 }
 
@@ -512,7 +521,7 @@ function bubblePopSound(){ tone(950 + Math.random() * 200, 0.09, "sine", 0.18); 
 function splashSound(){ [0,1,2,3].forEach(i => setTimeout(() => tone(523 + i*131, 0.3, "triangle", 0.18), i*70)); }
 function winSound(){ [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f, 0.35, "triangle", 0.2), i*130)); }
 
-/* ---------- toast & banner ---------- */
+/* ---------- toast ---------- */
 let toastTimer = null;
 function toast(msg, small){
   toastEl.textContent = msg;
@@ -521,14 +530,95 @@ function toast(msg, small){
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove("show"), small ? 2200 : 900);
 }
-let bannerTimer = null;
-function showBanner(lv, zn){
-  $("bannerLv").textContent = lv;
-  $("bannerZn").textContent = zn;
-  const b = $("banner");
-  b.classList.add("show");
-  clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(() => b.classList.remove("show"), 1700);
+
+/* ============================================================
+   PRE-LEVEL FUN FACTS — a character hosts every new level with
+   a real ocean fact, read aloud on request (Web Speech API).
+   ============================================================ */
+const HOSTS = {
+  king:    { img: "kingNerio", name: "King Nerio" },
+  maestro: { img: "maestro",   name: "Maestro" },
+  finn:    { img: "finn",      name: "Finn" },
+  morgana: { img: "morgana",   name: "Morgana" },
+  mermaid: { img: null,        name: null }, // resolves to the chosen mermaid
+};
+
+const FACTS = [
+  { h:"king",    t:"The ocean covers almost three quarters of our whole planet!" },
+  { h:"king",    t:"Most of the ocean has never been explored — it's the biggest mystery on Earth." },
+  { h:"king",    t:"More than half of the air you breathe is made by tiny plants living in the sea." },
+  { h:"king",    t:"The deepest part of the ocean is so deep, the tallest mountain would sink out of sight in it." },
+  { h:"king",    t:"Sound travels more than four times faster underwater than in the air." },
+  { h:"king",    t:"Old sunken ships slowly become homes for fish and coral — castles for sea creatures!" },
+  { h:"king",    t:"The blue whale is the biggest animal that has EVER lived — bigger than any dinosaur!" },
+  { h:"king",    t:"A blue whale's heart is as big as a small car." },
+  { h:"maestro", t:"Crabs talk to each other by waving and drumming their claws — like a little band!" },
+  { h:"maestro", t:"Crabs walk sideways because that's the way their legs bend. Try it — it's fun!" },
+  { h:"maestro", t:"Hermit crabs line up biggest-to-smallest to trade shells with each other!" },
+  { h:"maestro", t:"Humpback whales sing songs that travel for hundreds of miles underwater." },
+  { h:"maestro", t:"The tiny snapping shrimp makes one of the LOUDEST sounds in the whole ocean — with one little claw!" },
+  { h:"maestro", t:"Dolphins call each other by name — every dolphin has its very own whistle!" },
+  { h:"finn",    t:"Fish don't have eyelids, so we sleep with our eyes open!" },
+  { h:"finn",    t:"Some fish swim in giant groups called schools that move like one big swirling animal." },
+  { h:"finn",    t:"Flying fish can leap out of the water and glide through the air like paper airplanes!" },
+  { h:"finn",    t:"Pufferfish blow up like spiky balloons when they get scared. I know the feeling!" },
+  { h:"finn",    t:"Clownfish live safely inside stinging anemones without ever getting stung." },
+  { h:"finn",    t:"Seahorses are fish — and it's the DADS who carry the babies!" },
+  { h:"finn",    t:"Seahorses hold on to each other's tails so they don't float away. Like holding hands!" },
+  { h:"finn",    t:"White sandy beaches are often made by parrotfish who nibble coral and... poop out sand!" },
+  { h:"morgana", t:"An octopus has THREE hearts and blue blood. Deliciously strange!" },
+  { h:"morgana", t:"Octopuses can change color and shape to vanish completely. My favorite trick!" },
+  { h:"morgana", t:"An octopus can squeeze through a hole the size of a coin. No cage can hold us!" },
+  { h:"morgana", t:"Octopuses taste things just by touching them with their arms." },
+  { h:"morgana", t:"Deep in the dark sea, some creatures glow and make their own light — living lanterns!" },
+  { h:"morgana", t:"Jellyfish have no brain, no bones, and no heart — and they're older than the dinosaurs!" },
+  { h:"morgana", t:"Some octopuses collect pretty shells and shiny things to decorate their gardens." },
+  { h:"mermaid", t:"A pearl is made when an oyster wraps a tiny grain of sand in layer after layer of shine." },
+  { h:"mermaid", t:"Sea stars can grow a whole new arm if they lose one!" },
+  { h:"mermaid", t:"Sea stars have no brain — they feel the world through hundreds of tiny wiggly feet." },
+  { h:"mermaid", t:"Long ago, sailors who saw gentle manatees thought they were real mermaids!" },
+  { h:"mermaid", t:"Shark egg cases wash up on beaches — and people call them mermaid purses!" },
+  { h:"mermaid", t:"Sea turtles swim back to the very beach where they were born to lay their own eggs." },
+  { h:"mermaid", t:"Sea turtles cry salty tears — not because they're sad, it's how they spit out extra salt!" },
+  { h:"mermaid", t:"Some seashells grow rings each year, just like trees — you can guess how old they are!" },
+  { h:"mermaid", t:"Coral looks like a rock, but it's really thousands of tiny animals all living together." },
+  { h:"mermaid", t:"Sea otters hold hands while they sleep so they don't drift apart." },
+  { h:"mermaid", t:"Kelp is a giant seaweed that can grow taller than a house — some grows half a meter every day!" },
+];
+
+let currentFact = null, lastFactLevel = 0;
+
+function speak(text){
+  try {
+    if (!("speechSynthesis" in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 0.95; u.pitch = 1.05;
+    speechSynthesis.speak(u);
+  } catch(e){}
+}
+function hushed(){ try { speechSynthesis.cancel(); } catch(e){} }
+
+function showFact(){
+  const fact = FACTS[Math.floor(mulberry32(level * 131 + 17)() * FACTS.length)];
+  currentFact = fact;
+  const host = HOSTS[fact.h];
+  const img  = host.img ? ASSETS[host.img]
+             : (hero === "coral" ? ASSETS.coralHero : ASSETS.meliaHero);
+  const name = host.name || (hero === "coral" ? "Coral" : "Melia");
+  $("factLevel").textContent = "Level " + level + " · " + zone.em + " " + zone.name;
+  $("factImg").src = img;
+  $("factHost").textContent = name + " says…";
+  $("factText").textContent = fact.t;
+  $("factOverlay").classList.remove("hidden");
+  if (!muted) setTimeout(() => { if (currentFact === fact) speak(fact.t); }, 450);
+}
+
+function maybeMorganaStory(){
+  if (levelCfg && levelCfg.traps && !store.get("mermaidDots.seenMorgana", "")){
+    $("storyOverlay").classList.remove("hidden");
+    store.set("mermaidDots.seenMorgana", "1");
+  }
 }
 
 /* ---------- input ---------- */
@@ -980,6 +1070,15 @@ $("againBtn").addEventListener("click", () => {
 });
 $("storyBtn").addEventListener("click", () => {
   $("storyOverlay").classList.add("hidden");
+});
+$("factBtn").addEventListener("click", () => {
+  hushed();
+  $("factOverlay").classList.add("hidden");
+  maybeMorganaStory();
+});
+$("factSpeak").addEventListener("click", () => {
+  ensureAudio();
+  if (currentFact) speak(currentFact.t);
 });
 $("retryBtn").addEventListener("click", () => {
   if (state === "idle" || state === "fall") startLevel();
