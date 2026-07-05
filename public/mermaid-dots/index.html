@@ -134,6 +134,28 @@
     box-shadow:0 6px 16px rgba(24,110,175,.38);
   }
 
+  /* ---- aquarium ---- */
+  #aquaOverlay { justify-content:flex-end; padding-bottom:30px; background:rgba(4,24,56,0.20); }
+  #aquaTank { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .swimmer { position:absolute; left:-16%; animation:swim linear infinite; }
+  .swimmer.rev { animation-direction:reverse; }
+  .swimmer .flip { transform:scaleX(-1); }
+  .swimmer img { width:100%; display:block; animation:bobY ease-in-out infinite;
+    filter:drop-shadow(0 4px 6px rgba(0,20,60,.35)); }
+  @keyframes swim { to { left:105%; } }
+  @keyframes bobY { 0%,100%{ transform:translateY(-7px); } 50%{ transform:translateY(7px); } }
+  .aquaCard { max-width:380px; gap:9px; padding:18px 24px 20px; }
+  #aquaCounts { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; min-height:34px; }
+  @keyframes pulse { 50%{ transform:scale(1.3); } }
+  .pulse { animation:pulse .5s; }
+
+  .pick { position:relative; }
+  .pick .edit {
+    position:absolute; top:5px; right:5px; z-index:2;
+    width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(255,255,255,0.22); font-size:12px; line-height:1;
+  }
+
   .winRow { display:flex; align-items:flex-end; gap:6px; }
   .winRow .heroImg { height:168px; }
   .winRow .sideImg { height:88px; margin-bottom:4px;
@@ -148,6 +170,7 @@
   <div class="hudBox glass" id="goalsBox"></div>
   <div class="hudBox glass" id="movesBox"><span id="movesNum">🌊 0</span><span class="zone">waves left</span></div>
   <div id="btns">
+    <button class="iconBtn glass" id="aquaBtn" title="My Aquarium">🐠</button>
     <button class="iconBtn glass" id="muteBtn" title="Sound">🔊</button>
     <button class="iconBtn glass" id="retryBtn" title="Restart level">↻</button>
   </div>
@@ -160,8 +183,8 @@
     <img id="logoImg" alt="Mermaid Dots">
     <p>Help the mermaids collect their sea friends! Draw a line between <b>2 or more matching</b> friends. Make a <b>loop</b> for a big SPLASH!</p>
     <div class="pickRow">
-      <div class="pick" id="pickCoral"><img alt="Coral"><span>Coral</span></div>
-      <div class="pick" id="pickMelia"><img alt="Melia"><span>Melia</span></div>
+      <div class="pick" id="pickCoral"><button class="edit" id="editCoral" title="Rename">✏️</button><img alt="Coral"><span id="nameCoral">Coral</span></div>
+      <div class="pick" id="pickMelia"><button class="edit" id="editMelia" title="Rename">✏️</button><img alt="Melia"><span id="nameMelia">Melia</span></div>
     </div>
     <button class="btn" id="playBtn" disabled>Loading…</button>
     <div class="promise">💙 No ads · No purchases · Just fun 💙</div>
@@ -177,6 +200,7 @@
     </div>
     <h2 id="winTitle">Level Complete!</h2>
     <p id="winText"></p>
+    <div class="promise" id="winRescue" style="display:none"></div>
     <button class="btn" id="nextBtn">Next Level ➜</button>
   </div>
 </div>
@@ -197,6 +221,16 @@
     <div id="factHost"></div>
     <p id="factText"></p>
     <button class="btn" id="factBtn">🔊 Play my fun fact!</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="aquaOverlay">
+  <div id="aquaTank"></div>
+  <div class="card glass aquaCard">
+    <h2>My Aquarium 🐠</h2>
+    <div id="aquaCounts"></div>
+    <p id="aquaMsg"></p>
+    <button class="btn blue" id="aquaClose">Back to the sea ➜</button>
   </div>
 </div>
 
@@ -261,6 +295,14 @@ const store = {
 let level = parseInt(store.get("mermaidDots.level", "1"), 10) || 1;
 let muted = store.get("mermaidDots.muted", "") === "1";
 let hero  = store.get("mermaidDots.hero", "melia");
+let names = {
+  coral: store.get("mermaidDots.nameCoral", "Coral"),
+  melia: store.get("mermaidDots.nameMelia", "Melia"),
+};
+let rescued;
+try { rescued = JSON.parse(store.get("mermaidDots.rescued", "{}")); } catch(e){ rescued = {}; }
+if (!rescued || typeof rescued !== "object") rescued = {};
+let rescuedThisLevel = 0;
 
 let grid = [];
 let levelCfg = null, activeTypes = [], goals = [], moves = 0;
@@ -438,7 +480,7 @@ function makeFrost(){
 /* ---------- level lifecycle ---------- */
 function newDot(){
   return { type: activeTypes[Math.floor(Math.random() * activeTypes.length)],
-           yOff: 0, vy: 0, scale: 1, bounce: 0, trapped: false };
+           yOff: 0, vy: 0, scale: 1, bounce: 0, wiggle: 0, trapped: false };
 }
 
 function startLevel(){
@@ -468,6 +510,7 @@ function startLevel(){
   ensurePlayable();
 
   path = []; loopClosed = false; particles = []; rings = [];
+  rescuedThisLevel = 0;
   state = "fall";
   updateHud();
   if (level !== lastFactLevel){
@@ -517,6 +560,12 @@ function tone(freq, dur = 0.18, type = "sine", vol = 0.22){
   o.start(t); o.stop(t + dur);
 }
 function popNote(i){ tone(SCALE_HZ[Math.min(i, SCALE_HZ.length - 1)], 0.16); }
+function giggle(i){
+  const base = 660 + i * 70;
+  tone(base, 0.08, "sine", 0.16);
+  setTimeout(() => tone(base * 1.26, 0.1, "sine", 0.15), 75);
+  setTimeout(() => tone(base * 1.5, 0.12, "sine", 0.12), 160);
+}
 function bubblePopSound(){ tone(950 + Math.random() * 200, 0.09, "sine", 0.18); }
 function splashSound(){ [0,1,2,3].forEach(i => setTimeout(() => tone(523 + i*131, 0.3, "triangle", 0.18), i*70)); }
 function winSound(){ [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f, 0.35, "triangle", 0.2), i*130)); }
@@ -626,7 +675,7 @@ function showFact(){
   const host = HOSTS[fact.h];
   const img  = host.img ? ASSETS[host.img]
              : (hero === "coral" ? ASSETS.coralHero : ASSETS.meliaHero);
-  const name = host.name || (hero === "coral" ? "Coral" : "Melia");
+  const name = host.name || names[hero];
   $("factLevel").textContent = "Level " + level + " · " + zone.em + " " + zone.name;
   $("factImg").src = img;
   $("factHost").textContent = name + " says…";
@@ -723,7 +772,14 @@ canvas.addEventListener("pointerdown", e => {
   ensureAudio();
   if (state !== "idle") return;
   const p = cellFromPoint(e.clientX, e.clientY, 0.48);
-  if (!p || !grid[p.r][p.c] || grid[p.r][p.c].trapped) return;
+  if (!p || !grid[p.r][p.c]) return;
+  if (grid[p.r][p.c].trapped){
+    // a gentle boing — the friend is stuck in Morgana's bubble
+    grid[p.r][p.c].wiggle = 0.7;
+    tone(290, 0.1, "sine", 0.14);
+    setTimeout(() => tone(240, 0.14, "sine", 0.1), 90);
+    return;
+  }
   canvas.setPointerCapture(e.pointerId);
   path = [p]; loopClosed = false;
   pointerPos = { x: e.clientX, y: e.clientY };
@@ -773,7 +829,18 @@ function hasDuplicate(arr){
 canvas.addEventListener("pointerup", () => {
   if (state !== "drag") return;
   if (path.length >= MIN_PATH) clearPath();
-  else { path = []; state = "idle"; }
+  else {
+    // a single tap is a little hello — the friend wiggles and giggles
+    if (path.length === 1){
+      const p = path[0], d = grid[p.r][p.c];
+      if (d){
+        d.wiggle = 1;
+        giggle(TYPES.indexOf(d.type));
+        spawnHearts(cx(p.c), cy(p.r) - cell * 0.25);
+      }
+    }
+    path = []; state = "idle";
+  }
   pointerPos = null;
 });
 canvas.addEventListener("pointercancel", () => {
@@ -811,11 +878,20 @@ function clearPath(){
       const d = grid[r][c];
       if (d && d.trapped){
         d.trapped = false; popped++;
+        d.wiggle = 1;
+        rescued[d.type.key] = (rescued[d.type.key] || 0) + 1;
+        rescuedThisLevel++;
         rings.push({ x: cx(c), y: cy(r), r: cell * 0.35, max: cell * 0.9, t: 0, color: "#e0ccff" });
         burstBubbles(cx(c), cy(r));
+        spawnHearts(cx(c), cy(r) - cell * 0.25);
       }
     }
-  if (popped) setTimeout(bubblePopSound, 120);
+  if (popped){
+    setTimeout(bubblePopSound, 120);
+    store.set("mermaidDots.rescued", JSON.stringify(rescued));
+    const ab = $("aquaBtn");
+    ab.classList.remove("pulse"); void ab.offsetWidth; ab.classList.add("pulse");
+  }
 
   const gi = goals.findIndex(g => g.type.key === type.key);
   if (gi >= 0){
@@ -886,6 +962,10 @@ function afterSettle(){
     $("winImg").src = zoneDone ? ASSETS.kingNerio
       : (hero === "coral" ? ASSETS.coralCelebrate : ASSETS.meliaCelebrate);
     $("winSide").style.display = zoneDone ? "none" : "";
+    const wr = $("winRescue");
+    wr.style.display = rescuedThisLevel > 0 ? "" : "none";
+    wr.textContent = "🫧 You rescued " + rescuedThisLevel +
+      (rescuedThisLevel === 1 ? " friend" : " friends") + " for your aquarium!";
     setTimeout(() => $("winOverlay").classList.remove("hidden"), 800);
     level++;
     store.set("mermaidDots.level", String(level));
@@ -914,6 +994,23 @@ function burst(x, y, type){
       bubble: Math.random() < 0.3, spark: Math.random() < 0.25,
     });
   }
+}
+function spawnHearts(x, y){
+  for (let i = 0; i < 3; i++){
+    particles.push({
+      x: x + (Math.random() - 0.5) * cell * 0.5, y,
+      vx: (Math.random() - 0.5) * 50, vy: -45 - Math.random() * 45,
+      life: 0.75 + Math.random() * 0.25, t: 0,
+      color: "#ff6fa5", r: 5 + Math.random() * 3, heart: true,
+    });
+  }
+}
+function drawHeart(c, x, y, s){
+  c.beginPath();
+  c.moveTo(x, y + s * 0.35);
+  c.bezierCurveTo(x - s * 1.1, y - s * 0.5, x - s * 0.4, y - s * 1.1, x, y - s * 0.45);
+  c.bezierCurveTo(x + s * 0.4, y - s * 1.1, x + s * 1.1, y - s * 0.5, x, y + s * 0.35);
+  c.fill();
 }
 function burstBubbles(x, y){
   for (let i = 0; i < 10; i++){
@@ -986,7 +1083,7 @@ function render(t){
     ctx.fill();
   }
 
-  if (state !== "menu"){
+  if (state !== "menu" && !aquariumOpen){
     // frosted glass board panel
     if (frost){
       ctx.save();
@@ -1032,12 +1129,13 @@ function render(t){
 
         const bob = state === "over" ? 0 : Math.sin(t * 1.6 + c * 0.9 + r * 0.55) * 1.5;
         const x = cx(c), y = cy(r) + d.yOff + bob;
-        const sx = d.scale * (1 + d.bounce * 0.18);
-        const sy = d.scale * (1 - d.bounce * 0.28);
+        const sx = d.scale * (1 + d.bounce * 0.18 + d.wiggle * 0.08);
+        const sy = d.scale * (1 - d.bounce * 0.28 + d.wiggle * 0.08);
 
         if (glowing) ctx.drawImage(glows[d.type.key], x - SPR / 2, y - SPR / 2, SPR, SPR);
         ctx.save();
         ctx.translate(x, y);
+        if (d.wiggle > 0.02) ctx.rotate(Math.sin(t * 22 + c * 2) * 0.22 * d.wiggle);
         ctx.scale(sx, sy);
         ctx.drawImage(sprites[d.type.key], -SPR / 2, -SPR / 2, SPR, SPR);
         if (d.trapped){
@@ -1066,7 +1164,10 @@ function render(t){
   for (const p of particles){
     const a = Math.max(0, 1 - p.t / p.life);
     ctx.globalAlpha = a;
-    if (p.spark){
+    if (p.heart){
+      ctx.fillStyle = p.color;
+      drawHeart(ctx, p.x, p.y, p.r);
+    } else if (p.spark){
       ctx.save(); ctx.translate(p.x, p.y);
       sparkle(ctx, 0, 0, p.r * 1.4);
       ctx.restore();
@@ -1111,7 +1212,11 @@ function frame(ms){
   }
   for (const row of grid){
     if (!row) continue;
-    for (const d of row) if (d && d.bounce > 0) d.bounce *= Math.exp(-9 * dt);
+    for (const d of row){
+      if (!d) continue;
+      if (d.bounce > 0) d.bounce *= Math.exp(-9 * dt);
+      if (d.wiggle > 0) d.wiggle *= Math.exp(-2.6 * dt);
+    }
   }
   for (const p of particles){
     p.t += dt;
@@ -1129,6 +1234,68 @@ function frame(ms){
   render(t);
   requestAnimationFrame(frame);
 }
+
+/* ---------- aquarium ---------- */
+let aquariumOpen = false;
+function openAquarium(){
+  aquariumOpen = true;
+  const tank = $("aquaTank");
+  tank.innerHTML = "";
+  const entries = [];
+  let total = 0;
+  for (const t of TYPES){
+    const n = rescued[t.key] || 0;
+    total += n;
+    for (let i = 0; i < n; i++) entries.push(t);
+  }
+  $("aquaCounts").innerHTML = TYPES
+    .filter(t => (rescued[t.key] || 0) > 0)
+    .map(t => `<span class="goalChip"><img src="${ASSETS[t.img]}" alt="${t.name}">${rescued[t.key]}</span>`)
+    .join("");
+  $("aquaMsg").textContent = total === 0
+    ? "Your aquarium is empty! From level 8, pop Morgana's bubbles to rescue friends — they'll swim here forever."
+    : total + (total === 1 ? " rescued friend lives" : " rescued friends live") + " here. Keep popping bubbles!";
+  // show up to 20 swimmers, randomly sampled
+  while (entries.length > 20) entries.splice(Math.floor(Math.random() * entries.length), 1);
+  for (const t of entries){
+    const sw = document.createElement("div");
+    sw.className = "swimmer" + (Math.random() < 0.5 ? " rev" : "");
+    const size = 40 + Math.random() * 34;
+    const dur = 14 + Math.random() * 16;
+    sw.style.cssText = `width:${size}px; top:${8 + Math.random() * 62}%;` +
+      `animation-duration:${dur}s; animation-delay:-${Math.random() * dur}s;`;
+    const flip = document.createElement("div");
+    flip.className = sw.classList.contains("rev") ? "flip" : "";
+    const im = document.createElement("img");
+    im.src = ASSETS[t.img];
+    im.style.animationDuration = (1.8 + Math.random() * 1.6) + "s";
+    flip.appendChild(im); sw.appendChild(flip); tank.appendChild(sw);
+  }
+  $("aquaOverlay").classList.remove("hidden");
+}
+$("aquaBtn").addEventListener("click", () => { if (state !== "drag") openAquarium(); });
+$("aquaClose").addEventListener("click", () => {
+  aquariumOpen = false;
+  $("aquaOverlay").classList.add("hidden");
+  $("aquaTank").innerHTML = "";
+});
+
+/* ---------- mermaid renaming ---------- */
+function applyNames(){
+  $("nameCoral").textContent = names.coral;
+  $("nameMelia").textContent = names.melia;
+}
+function renameMermaid(key){
+  let v = null;
+  try { v = prompt("Name your mermaid!", names[key]); } catch(e){}
+  if (v && v.trim()){
+    names[key] = v.trim().slice(0, 14);
+    store.set(key === "coral" ? "mermaidDots.nameCoral" : "mermaidDots.nameMelia", names[key]);
+    applyNames();
+  }
+}
+$("editCoral").addEventListener("click", e => { e.stopPropagation(); renameMermaid("coral"); });
+$("editMelia").addEventListener("click", e => { e.stopPropagation(); renameMermaid("melia"); });
 
 /* ---------- buttons ---------- */
 function setHero(h){
@@ -1177,6 +1344,7 @@ layout();
 initBubbles();
 setMuteIcon();
 setHero(hero);
+applyNames();
 requestAnimationFrame(frame);
 
 loadAll.then(() => {
