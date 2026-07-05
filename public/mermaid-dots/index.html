@@ -39,8 +39,8 @@
     text-shadow:0 1px 2px rgba(0,20,60,.45);
     display:flex; align-items:center; gap:9px; white-space:nowrap;
   }
-  #levelBox { flex-direction:column; gap:0; padding:5px 16px; line-height:1.05; }
-  #levelBox .zone { font-size:11px; opacity:.9; letter-spacing:.5px; }
+  #levelBox, #movesBox { flex-direction:column; gap:0; padding:5px 16px; line-height:1.05; }
+  .hudBox .zone { font-size:11px; opacity:.9; letter-spacing:.5px; }
   .goalChip { display:flex; align-items:center; gap:5px; transition:transform .15s; }
   .goalChip img { width:28px; height:28px; object-fit:contain; display:block;
     filter:drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
@@ -108,7 +108,9 @@
   #factLevel { font-size:13px; opacity:.85; letter-spacing:.6px; }
   #factImg { height:116px; }
   #factHost { font-size:17px; letter-spacing:.3px; }
-  #factText { min-height:64px; display:flex; align-items:center; }
+  #factText { min-height:72px; display:block; line-height:1.65; }
+  #factText .w { border-radius:6px; padding:1px 3px; margin:0 -3px; transition:background .12s, color .12s; }
+  #factText .w.on { background:#ff7bac; color:#fff; }
   #factBtn { width:100%; font-size:20px; padding:16px 20px; line-height:1.2; }
 
   .stars { font-size:38px; letter-spacing:6px; line-height:1; }
@@ -144,7 +146,7 @@
 <div id="hud">
   <div class="hudBox glass" id="levelBox"><span id="levelNum">Level 1</span><span class="zone" id="zoneName"></span></div>
   <div class="hudBox glass" id="goalsBox"></div>
-  <div class="hudBox glass" id="movesBox">🌊 0</div>
+  <div class="hudBox glass" id="movesBox"><span id="movesNum">🌊 0</span><span class="zone">waves left</span></div>
   <div id="btns">
     <button class="iconBtn glass" id="muteBtn" title="Sound">🔊</button>
     <button class="iconBtn glass" id="retryBtn" title="Restart level">↻</button>
@@ -479,7 +481,7 @@ function startLevel(){
 function updateHud(){
   $("levelNum").textContent = "Level " + level;
   $("zoneName").textContent = zone.em + " " + zone.name;
-  movesBox.textContent = "🌊 " + moves;
+  $("movesNum").textContent = "🌊 " + moves;
   goalsBox.innerHTML = goals.map((g, i) =>
     `<span class="goalChip${g.left <= 0 ? " done" : ""}" id="gc${i}">` +
     `<img src="${ASSETS[g.type.img]}" alt="${g.type.name}">` +
@@ -501,6 +503,7 @@ function ensureAudio(){
     catch(e){ audio = false; }
   }
   if (audio && audio.state === "suspended") audio.resume();
+  try { speechSynthesis.getVoices(); } catch(e){}  // warm the TTS voice list
 }
 const SCALE_HZ = [392, 440, 494, 587, 659, 784, 880, 988, 1175, 1319];
 function tone(freq, dur = 0.18, type = "sine", vol = 0.22){
@@ -584,21 +587,42 @@ const FACTS = [
 ];
 
 let currentFact = null, lastFactLevel = 0;
+let currentUtter = null;   // held globally — Chrome kills speech if the utterance is GC'd
+let factPlaying = false, factDone = false;
+let wordTimer = null, safetyTimer = null;
 
-function speak(text){
-  try {
-    if (!("speechSynthesis" in window)) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
-    u.rate = 0.95; u.pitch = 1.05;
-    speechSynthesis.speak(u);
-  } catch(e){}
-}
 function hushed(){ try { speechSynthesis.cancel(); } catch(e){} }
+
+function renderFactWords(text){
+  const el = $("factText");
+  el.innerHTML = "";
+  let idx = 0;
+  for (const part of text.split(" ")){
+    const span = document.createElement("span");
+    span.className = "w";
+    span.dataset.i = idx;
+    span.textContent = part;
+    el.appendChild(span);
+    el.appendChild(document.createTextNode(" "));
+    idx += part.length + 1;
+  }
+}
+function factWords(){ return [...$("factText").querySelectorAll(".w")]; }
+function setWordOn(target){
+  for (const s of factWords()) s.classList.toggle("on", s === target);
+}
+function highlightAt(charIdx){
+  let target = null;
+  for (const s of factWords()){
+    if (+s.dataset.i <= charIdx) target = s; else break;
+  }
+  setWordOn(target);
+}
 
 function showFact(){
   const fact = FACTS[Math.floor(mulberry32(level * 131 + 17)() * FACTS.length)];
   currentFact = fact;
+  factPlaying = false; factDone = false;
   const host = HOSTS[fact.h];
   const img  = host.img ? ASSETS[host.img]
              : (hero === "coral" ? ASSETS.coralHero : ASSETS.meliaHero);
@@ -606,8 +630,73 @@ function showFact(){
   $("factLevel").textContent = "Level " + level + " · " + zone.em + " " + zone.name;
   $("factImg").src = img;
   $("factHost").textContent = name + " says…";
-  $("factText").textContent = fact.t;
+  renderFactWords(fact.t);
+  $("factBtn").textContent = "🔊 Play my fun fact!";
   $("factOverlay").classList.remove("hidden");
+}
+
+/* Read the fact aloud, karaoke-highlighting each word, then dive in.
+   Word timing comes from speech boundary events when the device
+   reports them, with a length-paced fallback when it doesn't.
+   A safety timer guarantees the level always starts. */
+function playFact(){
+  if (factPlaying){ finishFact(0); return; }   // second tap skips
+  factPlaying = true;
+  $("factBtn").textContent = "Skip ➜";
+  const text = currentFact.t;
+  const words = factWords();
+  let gotBoundary = false;
+
+  const paced = () => {
+    let i = 0;
+    const step = () => {
+      if (!factPlaying || gotBoundary) return;
+      if (i < words.length){
+        setWordOn(words[i]);
+        const len = words[i].textContent.length;
+        i++;
+        wordTimer = setTimeout(step, 190 + len * 55);
+      } else finishFact(500);
+    };
+    step();
+  };
+
+  let spoke = false;
+  if ("speechSynthesis" in window){
+    try {
+      speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      currentUtter = u;
+      u.lang = "en-US"; u.rate = 0.9; u.pitch = 1.05;
+      u.onboundary = e => {
+        if (typeof e.charIndex === "number"){
+          gotBoundary = true;
+          clearTimeout(wordTimer);
+          highlightAt(e.charIndex);
+        }
+      };
+      u.onend = () => { if (gotBoundary) finishFact(450); };
+      // Chrome-on-Android swallows speak() fired in the same tick as cancel()
+      setTimeout(() => {
+        try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch(e){}
+      }, 80);
+      spoke = true;
+    } catch(e){}
+  }
+  setTimeout(() => { if (factPlaying && !gotBoundary) paced(); }, spoke ? 900 : 0);
+  safetyTimer = setTimeout(() => finishFact(0), 4000 + text.length * 100);
+}
+
+function finishFact(delay){
+  if (factDone) return;
+  factDone = true; factPlaying = false;
+  clearTimeout(wordTimer); clearTimeout(safetyTimer);
+  setTimeout(() => {
+    hushed();
+    $("factOverlay").classList.add("hidden");
+    setWordOn(null);
+    maybeMorganaStory();
+  }, delay);
 }
 
 function maybeMorganaStory(){
@@ -1067,13 +1156,9 @@ $("againBtn").addEventListener("click", () => {
 $("storyBtn").addEventListener("click", () => {
   $("storyOverlay").classList.add("hidden");
 });
-// one button: reads the fact aloud AND dives into the level —
-// the voice keeps narrating while the board rains in
 $("factBtn").addEventListener("click", () => {
   ensureAudio();
-  if (currentFact) speak(currentFact.t);
-  $("factOverlay").classList.add("hidden");
-  maybeMorganaStory();
+  if (currentFact) playFact();
 });
 $("retryBtn").addEventListener("click", () => {
   if (state === "idle" || state === "fall") startLevel();
