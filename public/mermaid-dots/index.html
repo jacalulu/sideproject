@@ -243,9 +243,15 @@ const goalsBox = $("goalsBox"), movesBox = $("movesBox"), toastEl = $("toast");
 let W = 0, H = 0, DPR = 1;
 let cell = 60, boardX = 0, boardY = 0, hudH = 70;
 
-let level = parseInt(localStorage.getItem("mermaidDots.level") || "1", 10);
-let muted = localStorage.getItem("mermaidDots.muted") === "1";
-let hero  = localStorage.getItem("mermaidDots.hero") || "melia";
+// storage that survives sandboxed viewers where localStorage throws
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v === null ? d : v; } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, v); } catch(e){} },
+};
+
+let level = parseInt(store.get("mermaidDots.level", "1"), 10) || 1;
+let muted = store.get("mermaidDots.muted", "") === "1";
+let hero  = store.get("mermaidDots.hero", "melia");
 
 let grid = [];
 let levelCfg = null, activeTypes = [], goals = [], moves = 0;
@@ -456,10 +462,10 @@ function startLevel(){
   state = "fall";
   updateHud();
   showBanner("Level " + level, zone.em + " " + zone.name);
-  if (levelCfg.traps && !localStorage.getItem("mermaidDots.seenMorgana")){
+  if (levelCfg.traps && !store.get("mermaidDots.seenMorgana","")){
     setTimeout(() => {
       $("storyOverlay").classList.remove("hidden");
-      localStorage.setItem("mermaidDots.seenMorgana", "1");
+      store.set("mermaidDots.seenMorgana", "1");
     }, 1100);
   }
 }
@@ -707,7 +713,7 @@ function afterSettle(){
     $("winSide").style.display = zoneDone ? "none" : "";
     setTimeout(() => $("winOverlay").classList.remove("hidden"), 800);
     level++;
-    localStorage.setItem("mermaidDots.level", String(level));
+    store.set("mermaidDots.level", String(level));
     return;
   }
   if (moves <= 0){
@@ -952,7 +958,7 @@ function frame(ms){
 /* ---------- buttons ---------- */
 function setHero(h){
   hero = h;
-  localStorage.setItem("mermaidDots.hero", h);
+  store.set("mermaidDots.hero", h);
   $("pickCoral").classList.toggle("sel", h === "coral");
   $("pickMelia").classList.toggle("sel", h === "melia");
 }
@@ -981,7 +987,7 @@ $("retryBtn").addEventListener("click", () => {
 function setMuteIcon(){ $("muteBtn").textContent = muted ? "🔇" : "🔊"; }
 $("muteBtn").addEventListener("click", () => {
   muted = !muted;
-  localStorage.setItem("mermaidDots.muted", muted ? "1" : "0");
+  store.set("mermaidDots.muted", muted ? "1" : "0");
   setMuteIcon();
   if (!muted){ ensureAudio(); popNote(3); }
 });
