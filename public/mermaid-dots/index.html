@@ -148,6 +148,11 @@
   #aquaCounts { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; min-height:34px; }
   @keyframes pulse { 50%{ transform:scale(1.3); } }
   .pulse { animation:pulse .5s; }
+  @keyframes lowPulse { 50%{ transform:scale(1.07); } }
+  #movesBox.low {
+    background:rgba(214,55,90,0.42); border-color:rgba(255,160,180,0.65);
+    animation:lowPulse 1.1s ease-in-out infinite;
+  }
 
   .pick { position:relative; }
   .pick .edit {
@@ -187,6 +192,7 @@
       <div class="pick" id="pickMelia"><button class="edit" id="editMelia" title="Rename">✏️</button><img alt="Melia"><span id="nameMelia">Melia</span></div>
     </div>
     <button class="btn" id="playBtn" disabled>Loading…</button>
+    <div class="promise" id="starTotal" style="display:none"></div>
     <div class="promise">💙 No ads · No purchases · Just fun 💙</div>
   </div>
 </div>
@@ -221,6 +227,16 @@
     <div id="factHost"></div>
     <p id="factText"></p>
     <button class="btn" id="factBtn">🔊 Play my fun fact!</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="retryOverlay">
+  <div class="card glass">
+    <div style="font-size:44px; line-height:1">🌀</div>
+    <h2>Start over?</h2>
+    <p>This level will begin again from the start.</p>
+    <button class="btn" id="retryYes">Yes, restart 🌀</button>
+    <button class="btn blue" id="retryNo">Keep playing</button>
   </div>
 </div>
 
@@ -303,6 +319,10 @@ let rescued;
 try { rescued = JSON.parse(store.get("mermaidDots.rescued", "{}")); } catch(e){ rescued = {}; }
 if (!rescued || typeof rescued !== "object") rescued = {};
 let rescuedThisLevel = 0;
+let starsByLevel;
+try { starsByLevel = JSON.parse(store.get("mermaidDots.stars", "{}")); } catch(e){ starsByLevel = {}; }
+if (!starsByLevel || typeof starsByLevel !== "object") starsByLevel = {};
+let lastAction = 0, hintPair = null;   // gentle nudge when a kid is stuck
 
 let grid = [];
 let levelCfg = null, activeTypes = [], goals = [], moves = 0;
@@ -412,7 +432,7 @@ function bakeSprites(){
     const gg = gv.getContext("2d");
     gg.scale(DPR, DPR); gg.translate(SPR / 2, SPR / 2);
     const gr = gg.createRadialGradient(0, 0, cell * 0.2, 0, 0, cell * 0.72);
-    gr.addColorStop(0, rgba(t.main, 0.42));
+    gr.addColorStop(0, rgba(t.main, 0.58));
     gr.addColorStop(1, rgba(t.main, 0));
     gg.fillStyle = gr;
     gg.beginPath(); gg.arc(0, 0, cell * 0.72, 0, TAU); gg.fill();
@@ -525,6 +545,7 @@ function updateHud(){
   $("levelNum").textContent = "Level " + level;
   $("zoneName").textContent = zone.em + " " + zone.name;
   $("movesNum").textContent = "🌊 " + moves;
+  movesBox.classList.toggle("low", state !== "menu" && moves <= 5);
   goalsBox.innerHTML = goals.map((g, i) =>
     `<span class="goalChip${g.left <= 0 ? " done" : ""}" id="gc${i}">` +
     `<img src="${ASSETS[g.type.img]}" alt="${g.type.name}">` +
@@ -770,6 +791,7 @@ const inPath = p => path.some(q => sameCell(p, q));
 
 canvas.addEventListener("pointerdown", e => {
   ensureAudio();
+  lastAction = lastT; hintPair = null;
   if (state !== "idle") return;
   const p = cellFromPoint(e.clientX, e.clientY, 0.48);
   if (!p || !grid[p.r][p.c]) return;
@@ -934,6 +956,25 @@ function ensurePlayable(){
   }
 }
 
+function findHintPair(){
+  const pairs = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++){
+      const d = grid[r][c];
+      if (!d || d.trapped) continue;
+      if (c + 1 < COLS && grid[r][c+1] && !grid[r][c+1].trapped && grid[r][c+1].type === d.type)
+        pairs.push([{r, c}, {r, c: c+1}]);
+      if (r + 1 < ROWS && grid[r+1][c] && !grid[r+1][c].trapped && grid[r+1][c].type === d.type)
+        pairs.push([{r, c}, {r: r+1, c}]);
+    }
+  if (!pairs.length) return null;
+  // prefer hinting a goal type so the nudge also teaches strategy
+  const goalKeys = goals.filter(g => g.left > 0).map(g => g.type.key);
+  const goalPairs = pairs.filter(p => goalKeys.includes(grid[p[0].r][p[0].c].type.key));
+  const pool = goalPairs.length ? goalPairs : pairs;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
 function hasAnyMove(){
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++){
@@ -954,6 +995,8 @@ function afterSettle(){
     const stars = moves >= s3 ? 3 : moves >= s2 ? 2 : 1;
     const spans = $("starRow").children;
     for (let i = 0; i < 3; i++) spans[i].classList.toggle("on", i < stars);
+    starsByLevel[level] = Math.max(starsByLevel[level] || 0, stars);
+    store.set("mermaidDots.stars", JSON.stringify(starsByLevel));
     const zoneDone = level % 10 === 0;
     $("winTitle").textContent = zoneDone ? "Zone Complete!" : "Level Complete!";
     $("winText").textContent = zoneDone
@@ -1096,13 +1139,16 @@ function render(t){
       ctx.stroke();
     }
 
-    // connection line
+    // connection line: color glow, white casing, then a solid color core
     if (state === "drag" && path.length){
       const type = grid[path[0].r][path[0].c].type;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
-      for (const [lw, alpha] of [[cell * 0.3, 0.28], [cell * 0.13, 0.95]]){
+      for (const [lw, alpha, col] of [
+        [cell * 0.34, 0.25, type.main],
+        [cell * 0.19, 0.9, "#ffffff"],
+        [cell * 0.115, 1, type.main]]){
         ctx.lineWidth = lw;
-        ctx.strokeStyle = type.main;
+        ctx.strokeStyle = col;
         ctx.globalAlpha = alpha;
         ctx.beginPath();
         ctx.moveTo(cx(path[0].c), cy(path[0].r));
@@ -1124,8 +1170,16 @@ function render(t){
         const inSel = state === "drag" && !d.trapped &&
           d.type === (path.length ? grid[path[0].r][path[0].c].type : null) && inPathDot(d);
         const glowing = inSel || (loopType && d.type === loopType && !d.trapped);
-        if (glowing) d.scale = Math.min(1.14, d.scale + 0.03);
+        const hinted = hintPair && state === "idle" &&
+          ((r === hintPair[0].r && c === hintPair[0].c) || (r === hintPair[1].r && c === hintPair[1].c));
+        if (glowing) d.scale = Math.min(1.18, d.scale + 0.035);
         else d.scale += (1 - d.scale) * 0.2;
+        if (hinted){
+          ctx.globalAlpha = 0.45 + 0.4 * Math.sin(t * 4);
+          ctx.drawImage(glows[d.type.key], cx(c) - SPR / 2, cy(r) + d.yOff - SPR / 2, SPR, SPR);
+          ctx.globalAlpha = 1;
+          d.scale = 1 + 0.05 * (1 + Math.sin(t * 4));
+        }
 
         const bob = state === "over" ? 0 : Math.sin(t * 1.6 + c * 0.9 + r * 0.55) * 1.5;
         const x = cx(c), y = cy(r) + d.yOff + bob;
@@ -1231,6 +1285,11 @@ function frame(ms){
     if (b.y < -12){ b.y = H + 12; b.x = Math.random() * W; }
   }
 
+  // idle hint: after 5 quiet seconds, pulse a matching pair
+  if (state === "idle"){
+    if (t - lastAction > 5 && !hintPair) hintPair = findHintPair();
+  } else { hintPair = null; lastAction = t; }
+
   render(t);
   requestAnimationFrame(frame);
 }
@@ -1328,7 +1387,14 @@ $("factBtn").addEventListener("click", () => {
   if (currentFact) playFact();
 });
 $("retryBtn").addEventListener("click", () => {
-  if (state === "idle" || state === "fall") startLevel();
+  if (state === "idle" || state === "fall") $("retryOverlay").classList.remove("hidden");
+});
+$("retryYes").addEventListener("click", () => {
+  $("retryOverlay").classList.add("hidden");
+  startLevel();
+});
+$("retryNo").addEventListener("click", () => {
+  $("retryOverlay").classList.add("hidden");
 });
 function setMuteIcon(){ $("muteBtn").textContent = muted ? "🔇" : "🔊"; }
 $("muteBtn").addEventListener("click", () => {
@@ -1359,6 +1425,11 @@ loadAll.then(() => {
   const pb = $("playBtn");
   pb.disabled = false;
   pb.textContent = level > 1 ? ("Continue · Level " + level) : "Play! 🐚";
+  const totalStars = Object.values(starsByLevel).reduce((a, b) => a + b, 0);
+  if (totalStars > 0){
+    $("starTotal").style.display = "";
+    $("starTotal").textContent = "⭐ " + totalStars + " star" + (totalStars === 1 ? "" : "s") + " collected";
+  }
 });
 </script>
 </body>
