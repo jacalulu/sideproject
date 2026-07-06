@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Mermaid Dots 🧜‍♀️</title>
 <style>
   @font-face {
@@ -18,6 +18,8 @@
     background:#123a6e; color:#fff; user-select:none; -webkit-user-select:none;
   }
   #game { position:absolute; inset:0; touch-action:none; }
+  button { touch-action:manipulation; }
+  button:focus-visible { outline:3px solid rgba(255,209,232,0.95); outline-offset:2px; }
 
   /* ---- liquid glass surfaces ---- */
   .glass {
@@ -32,7 +34,8 @@
   #hud {
     position:absolute; top:0; left:0; right:0; z-index:5;
     display:flex; align-items:center; justify-content:space-between;
-    gap:8px; padding:10px 12px; pointer-events:none;
+    gap:8px; pointer-events:none;
+    padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
   }
   .hudBox {
     border-radius:18px; padding:6px 13px; font-size:15.5px; letter-spacing:.3px;
@@ -40,15 +43,16 @@
     display:flex; align-items:center; gap:9px; white-space:nowrap;
   }
   #levelBox, #movesBox { flex-direction:column; gap:0; padding:5px 16px; line-height:1.05; }
-  .hudBox .zone { font-size:11px; opacity:.9; letter-spacing:.5px; }
+  .hudBox .zone { font-size:12px; opacity:.92; letter-spacing:.5px; }
   .goalChip { display:flex; align-items:center; gap:5px; transition:transform .15s; }
   .goalChip img { width:28px; height:28px; object-fit:contain; display:block;
     filter:drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
   .goalChip.done { opacity:.6; }
   .goalChip.bump { transform:scale(1.25); }
-  #btns { position:fixed; right:12px; bottom:12px; display:flex; gap:8px; pointer-events:auto; z-index:6; }
+  #btns { position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:8px; pointer-events:auto; z-index:6; }
   .iconBtn {
-    color:#fff; width:42px; height:42px; border-radius:50%; font-size:19px; cursor:pointer;
+    color:#fff; width:44px; height:44px; border-radius:50%; font-size:19px; cursor:pointer;
+    touch-action:manipulation;
   }
   .iconBtn:active { transform:scale(.9); }
   @media (max-width:480px){
@@ -56,7 +60,6 @@
     .hudBox { padding:5px 9px; font-size:14.5px; gap:7px; border-radius:16px; }
     #levelBox { padding:4px 10px; }
     .goalChip img { width:22px; height:22px; }
-    .iconBtn { width:36px; height:36px; font-size:16px; }
   }
 
   #toast {
@@ -156,9 +159,16 @@
 
   .pick { position:relative; }
   .pick .edit {
-    position:absolute; top:5px; right:5px; z-index:2;
-    width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
-    background:rgba(255,255,255,0.22); font-size:12px; line-height:1;
+    position:absolute; top:4px; right:4px; z-index:2;
+    width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
+    background:rgba(255,255,255,0.22); font-size:15px; line-height:1;
+    touch-action:manipulation;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .card .big, .card .heroImg, .winRow .sideImg { animation:none; }
+    #movesBox.low { animation:none; }
+    .swimmer, .swimmer img { animation:none !important; }
   }
 
   .winRow { display:flex; align-items:flex-end; gap:6px; }
@@ -175,9 +185,9 @@
   <div class="hudBox glass" id="goalsBox"></div>
   <div class="hudBox glass" id="movesBox"><span id="movesNum">🌊 0</span><span class="zone">waves left</span></div>
   <div id="btns">
-    <button class="iconBtn glass" id="aquaBtn" title="My Aquarium">🐠</button>
-    <button class="iconBtn glass" id="muteBtn" title="Sound">🔊</button>
-    <button class="iconBtn glass" id="retryBtn" title="Restart level">↻</button>
+    <button class="iconBtn glass" id="aquaBtn" title="My Aquarium" aria-label="Open my aquarium">🐠</button>
+    <button class="iconBtn glass" id="muteBtn" title="Sound" aria-label="Turn sound on or off">🔊</button>
+    <button class="iconBtn glass" id="retryBtn" title="Restart level" aria-label="Restart this level">↻</button>
   </div>
 </div>
 
@@ -188,8 +198,8 @@
     <img id="logoImg" alt="Mermaid Dots">
     <p>Help the mermaids collect their sea friends! Draw a line between <b>2 or more matching</b> friends. Make a <b>loop</b> for a big SPLASH!</p>
     <div class="pickRow">
-      <div class="pick" id="pickCoral"><button class="edit" id="editCoral" title="Rename">✏️</button><img alt="Coral"><span id="nameCoral">Coral</span></div>
-      <div class="pick" id="pickMelia"><button class="edit" id="editMelia" title="Rename">✏️</button><img alt="Melia"><span id="nameMelia">Melia</span></div>
+      <div class="pick" id="pickCoral"><button class="edit" id="editCoral" title="Rename" aria-label="Rename this mermaid">✏️</button><img alt="Coral"><span id="nameCoral">Coral</span></div>
+      <div class="pick" id="pickMelia"><button class="edit" id="editMelia" title="Rename" aria-label="Rename this mermaid">✏️</button><img alt="Melia"><span id="nameMelia">Melia</span></div>
     </div>
     <button class="btn" id="playBtn" disabled>Loading…</button>
     <div class="promise" id="starTotal" style="display:none"></div>
@@ -332,6 +342,7 @@ let path = [], loopClosed = false, pointerPos = null;
 let particles = [], rings = [], bubbles = [];
 let lastT = 0;
 let assetsReady = false;
+const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------- asset loading ---------- */
 const IMGS = {};
@@ -1078,7 +1089,7 @@ function celebrate(){
 }
 function initBubbles(){
   bubbles = [];
-  for (let i = 0; i < 10; i++){
+  for (let i = 0; i < (REDUCED ? 0 : 10); i++){
     bubbles.push({
       x: Math.random() * W, y: Math.random() * H,
       r: 2 + Math.random() * 7, sp: 10 + Math.random() * 24,
@@ -1181,7 +1192,7 @@ function render(t){
           d.scale = 1 + 0.05 * (1 + Math.sin(t * 4));
         }
 
-        const bob = state === "over" ? 0 : Math.sin(t * 1.6 + c * 0.9 + r * 0.55) * 1.5;
+        const bob = (state === "over" || REDUCED) ? 0 : Math.sin(t * 1.6 + c * 0.9 + r * 0.55) * 1.5;
         const x = cx(c), y = cy(r) + d.yOff + bob;
         const sx = d.scale * (1 + d.bounce * 0.18 + d.wiggle * 0.08);
         const sy = d.scale * (1 - d.bounce * 0.28 + d.wiggle * 0.08);
@@ -1321,8 +1332,10 @@ function openAquarium(){
     sw.className = "swimmer" + (Math.random() < 0.5 ? " rev" : "");
     const size = 40 + Math.random() * 34;
     const dur = 14 + Math.random() * 16;
-    sw.style.cssText = `width:${size}px; top:${8 + Math.random() * 62}%;` +
-      `animation-duration:${dur}s; animation-delay:-${Math.random() * dur}s;`;
+    sw.style.cssText = REDUCED
+      ? `width:${size}px; top:${8 + Math.random() * 62}%; left:${5 + Math.random() * 80}%; animation:none;`
+      : `width:${size}px; top:${8 + Math.random() * 62}%;` +
+        `animation-duration:${dur}s; animation-delay:-${Math.random() * dur}s;`;
     const flip = document.createElement("div");
     flip.className = sw.classList.contains("rev") ? "flip" : "";
     const im = document.createElement("img");
