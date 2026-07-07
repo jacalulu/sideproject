@@ -1436,10 +1436,12 @@ $("playBtn").addEventListener("click", () => {
 $("nextBtn").addEventListener("click", () => {
   stopWinAnim();
   $("winOverlay").classList.add("hidden");
+  if (applyStaleBuild()) return;   // progress is saved; reload into the new build
   startLevel();
 });
 $("againBtn").addEventListener("click", () => {
   $("loseOverlay").classList.add("hidden");
+  if (applyStaleBuild()) return;
   startLevel();
 });
 $("storyBtn").addEventListener("click", () => {
@@ -1478,7 +1480,38 @@ requestAnimationFrame(frame);
 
 // installable PWA when served over http(s); harmless no-op for file:// play
 if ("serviceWorker" in navigator && location.protocol.startsWith("http"))
-  navigator.serviceWorker.register("sw.js").catch(() => {});
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {});
+
+/* ---------- self-update ----------
+   The installed app has no refresh button and Android keeps the page
+   alive between openings, so a stale build could stick around forever.
+   Every deploy stamps version.json with the commit SHA; we re-check it
+   whenever the app comes to the foreground and reload from the menu
+   (never mid-level) when a newer build is live. */
+let bootBuild = null, buildStale = false;
+async function checkBuild(){
+  if (!location.protocol.startsWith("http")) return;
+  try {
+    const r = await fetch("version.json?_=" + Date.now(), { cache: "no-store" });
+    if (!r.ok) return;
+    const v = (await r.json()).build;
+    if (bootBuild === null) bootBuild = v;
+    else if (v !== bootBuild){
+      if (state === "menu"){
+        toast("✨ Ocean magic incoming…", true);
+        setTimeout(() => location.reload(), 700);
+      } else buildStale = true;   // applied between levels, never mid-board
+    }
+  } catch(e){}
+}
+function applyStaleBuild(){
+  if (!buildStale) return false;
+  toast("✨ Ocean magic incoming…", true);
+  setTimeout(() => location.reload(), 700);
+  return true;
+}
+checkBuild();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkBuild(); });
 
 loadAll.then(() => {
   assetsReady = true;
