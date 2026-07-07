@@ -1792,7 +1792,10 @@ requestAnimationFrame(frame);
   // fades in over it when ready and earns the splash a little more time
   const vid = $("splashVid");
   if (!REDUCED && location.protocol.startsWith("http")){
-    vid.src = "assets/splash.mp4";
+    // webm first (plays everywhere Chromium does), mp4 for Safari
+    vid.innerHTML = '<source src="assets/splash.webm" type="video/webm">' +
+                    '<source src="assets/splash.mp4" type="video/mp4">';
+    vid.load();
     vid.addEventListener("canplaythrough", () => {
       if (gone) return;
       vid.play().then(() => {
