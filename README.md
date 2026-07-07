@@ -53,7 +53,10 @@ the game:
 - **King Nerio** congratulates you when you finish each 10-level zone.
 
 **Art & tech.** Painterly zone backgrounds, glowing painterly characters,
-and a liquid-glass UI (frosted board panel, glass bubble tokens, glass HUD —
+an animated win screen (an 8-frame Nano Banana flipbook of your mermaid
+dancing), a looping background tune composed by Lyria (ducks under the
+narrated fun facts), and a liquid-glass UI (frosted board panel, glass
+bubble tokens, glass HUD —
 plain CSS `backdrop-filter` + canvas, so it works on iPad Safari). All images
 are WebP embedded as data URLs and the Fredoka font (OFL license) is inlined:
 the whole game is still ONE self-contained ~1 MB HTML file with no
