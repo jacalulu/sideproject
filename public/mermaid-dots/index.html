@@ -204,6 +204,12 @@
     .swimmer, .swimmer img { animation:none !important; }
   }
 
+  /* full-screen Veo celebration behind the frosted win card; when it's
+     playing, the in-card flipbook steps aside */
+  #winVid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    opacity:0; transition:opacity .6s ease; pointer-events:none; }
+  #winOverlay.vidmode #winVid { opacity:1; }
+  #winOverlay.vidmode .winRow { display:none; }
   .winRow { position:relative; display:flex; align-items:center; justify-content:center; min-height:244px; }
   .winRow::before {  /* radiant burst behind the dancing mermaid */
     content:""; position:absolute; width:250px; height:250px; border-radius:50%;
@@ -256,6 +262,7 @@
 </div>
 
 <div class="overlay hidden" id="winOverlay">
+  <video id="winVid" muted playsinline loop preload="none" aria-hidden="true"></video>
   <div class="card glass">
     <div class="stars" id="starRow"><span>⭐</span><span>⭐</span><span>⭐</span></div>
     <div class="winRow">
@@ -697,6 +704,33 @@ function stopWinAnim(){
   if (b){ b.style.opacity = 0; b.removeAttribute("src"); }
 }
 
+/* full-screen Veo win celebration (lazy; flipbook stays as fallback) */
+const WIN_VIDS = { melia: "win-jaclyn", coral: "win-ophelia" };
+let winVidHero = null;
+function startWinVid(){
+  if (REDUCED || !location.protocol.startsWith("http")) return;
+  const v = $("winVid");
+  if (winVidHero !== hero){
+    const base = "assets/" + WIN_VIDS[hero];
+    v.innerHTML = '<source src="' + base + '.webm" type="video/webm">' +
+                  '<source src="' + base + '.mp4" type="video/mp4">';
+    v.load();
+    winVidHero = hero;
+  }
+  const go = () => {
+    if (state !== "over") return;
+    v.currentTime = 0;
+    v.play().then(() => $("winOverlay").classList.add("vidmode")).catch(() => {});
+  };
+  if (v.readyState >= 3) go();
+  else v.addEventListener("canplaythrough", go, { once: true });
+}
+function stopWinVid(){
+  const v = $("winVid");
+  if (v) v.pause();
+  $("winOverlay").classList.remove("vidmode");
+}
+
 /* ============================================================
    ADVENTURE MAP — a scrollable trail through the ocean zones.
    Levels wind upward, ten per zone painting; completed levels
@@ -720,6 +754,7 @@ function openMap(){
     $(id).classList.add("hidden");
   if (!$("factOverlay").classList.contains("hidden")) finishFact(0);
   stopWinAnim();
+  stopWinVid();
   state = "map";
   path = []; loopClosed = false; pointerPos = null; mapDragging = false;
   mapScroll = Math.min(mapMaxScroll(), Math.max(0, mapWorldY(progress) - H * 0.55));
@@ -1334,8 +1369,8 @@ function afterSettle(){
     $("winText").textContent = zoneDone
       ? "King Nerio is SO proud — a whole new part of the ocean awaits!"
       : "You found all the friends — they're safe with the mermaids now!";
-    if (zoneDone){ stopWinAnim(); $("winImg").src = ASSETS.kingNerio; }
-    else startWinAnim();
+    if (zoneDone){ stopWinAnim(); stopWinVid(); $("winImg").src = ASSETS.kingNerio; }
+    else { startWinAnim(); startWinVid(); }
     const wr = $("winRescue");
     wr.style.display = rescuedThisLevel > 0 ? "" : "none";
     wr.textContent = "🫧 You rescued " + rescuedThisLevel +
@@ -1707,6 +1742,7 @@ $("mapHudBtn").addEventListener("click", () => {
 });
 $("nextBtn").addEventListener("click", () => {
   stopWinAnim();
+  stopWinVid();
   $("winOverlay").classList.add("hidden");
   if (applyStaleBuild()) return;   // progress is saved; reload into the new build
   // back to the map — if the frontier just advanced, the mermaid hops
