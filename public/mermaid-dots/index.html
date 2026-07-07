@@ -224,8 +224,7 @@
     <h2 id="winTitle">Level Complete!</h2>
     <p id="winText"></p>
     <div class="promise" id="winRescue" style="display:none"></div>
-    <button class="btn" id="nextBtn">Next Level ➜</button>
-    <button class="btn blue" id="winMapBtn">🗺️ Adventure Map</button>
+    <button class="btn" id="nextBtn">Continue ➜</button>
   </div>
 </div>
 
@@ -661,6 +660,7 @@ function stopWinAnim(){
    can be replayed, the frontier pulses, the future is locked.
    ============================================================ */
 let mapScroll = 0, mapDragStartY = 0, mapScrollStart = 0, mapMoved = false, mapDragging = false;
+let mapHopFrom = 0, mapHopT = 0;   // post-win arrival: hop from the beaten node to the new one
 
 const mapMaxShown = () => progress + 4;               // small peek at what's ahead
 function mapWorldY(L){                                // distance above the map's bottom
@@ -780,7 +780,19 @@ function renderMap(t){
   const heroSpr = IMGS[hero === "coral" ? "coralHero" : "meliaHero"];
   if (heroSpr && heroSpr.width){                      // your mermaid at the frontier
     const hh = r * 3.1, hw = heroSpr.width * hh / heroSpr.height;
-    const hx = mapNodeX(progress), hy = mapScreenY(progress);
+    let hx = mapNodeX(progress), hy = mapScreenY(progress);
+    if (mapHopFrom){                                  // arriving after a win: hop forward
+      const hop = Math.min(1, (t - mapHopT) / 0.9);
+      if (hop < 1){
+        const fx = mapNodeX(mapHopFrom), fy = mapScreenY(mapHopFrom);
+        const e = 1 - Math.pow(1 - hop, 3);
+        hx = fx + (hx - fx) * e;
+        hy = fy + (hy - fy) * e - Math.sin(hop * Math.PI) * r * 2;
+      } else {
+        mapHopFrom = 0;
+        burstBubbles(hx, hy - r);                     // little landing splash
+      }
+    }
     const bobY = REDUCED ? 0 : Math.sin(t * 1.8) * 4;
     ctx.drawImage(heroSpr, hx - hw / 2, hy - r * 1.1 - hh + bobY, hw, hh);
   }
@@ -1645,7 +1657,6 @@ $("playBtn").addEventListener("click", () => {
   $("startOverlay").classList.add("hidden");
   openMap();
 });
-$("winMapBtn").addEventListener("click", openMap);
 $("loseMapBtn").addEventListener("click", openMap);
 $("mapHudBtn").addEventListener("click", () => {
   if (state === "menu" || aquariumOpen) return;
@@ -1655,7 +1666,10 @@ $("nextBtn").addEventListener("click", () => {
   stopWinAnim();
   $("winOverlay").classList.add("hidden");
   if (applyStaleBuild()) return;   // progress is saved; reload into the new build
-  startLevel();
+  // back to the map — if the frontier just advanced, the mermaid hops
+  // from the beaten level to the newly unlocked one
+  if (level === progress && level > 1 && !REDUCED){ mapHopFrom = level - 1; mapHopT = lastT; }
+  openMap();
 });
 $("againBtn").addEventListener("click", () => {
   $("loseOverlay").classList.add("hidden");
