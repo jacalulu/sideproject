@@ -604,6 +604,7 @@ function startLevel(){
   rescuedThisLevel = 0;
   state = "fall";
   updateHud();
+  prepWinVid();
   if (level !== lastFactLevel){
     lastFactLevel = level;
     showFact();          // Morgana's story (level 8) chains after dismissal
@@ -709,16 +710,20 @@ function stopWinAnim(){
 /* full-screen Veo win celebration (lazy; flipbook stays as fallback) */
 const WIN_VIDS = { melia: "win-jaclyn", coral: "win-ophelia" };
 let winVidHero = null;
+function prepWinVid(){   // kick off the download early (start of a level)
+  if (REDUCED || !location.protocol.startsWith("http")) return;
+  if (winVidHero === hero) return;
+  const v = $("winVid");
+  const base = "assets/" + WIN_VIDS[hero];
+  v.innerHTML = '<source src="' + base + '.webm" type="video/webm">' +
+                '<source src="' + base + '.mp4" type="video/mp4">';
+  v.load();
+  winVidHero = hero;
+}
 function startWinVid(){
   if (REDUCED || !location.protocol.startsWith("http")) return;
   const v = $("winVid");
-  if (winVidHero !== hero){
-    const base = "assets/" + WIN_VIDS[hero];
-    v.innerHTML = '<source src="' + base + '.webm" type="video/webm">' +
-                  '<source src="' + base + '.mp4" type="video/mp4">';
-    v.load();
-    winVidHero = hero;
-  }
+  prepWinVid();
   const go = () => {
     if (state !== "over") return;
     v.currentTime = 0;
