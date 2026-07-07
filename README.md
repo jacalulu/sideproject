@@ -10,6 +10,16 @@ A kid-friendly dot-connecting puzzle game (in the spirit of Two Dots) with
 (double-click the file, or serve the `public/` folder). Works with mouse
 or touch, so it's great on a phone or tablet.
 
+**To play on a phone (the "TestFlight for Android" setup):** every push
+to `master` deploys `public/` to GitHub Pages
+(`.github/workflows/deploy-pages.yml`). Open
+`https://jacalulu.github.io/sideproject/mermaid-dots/` in Chrome on
+Android and choose **Add to Home screen** — the game installs as a
+fullscreen app (PWA manifest + service worker). Each later merge to
+`master` redeploys, and the installed app picks up the new version the
+next time it's opened (the service worker fetches network-first). No
+app store, no build step, no review queue.
+
 **How to play**
 - Drag a line between 2 or more matching sea friends to collect them.
 - Close a **loop** (like a square) to splash away every friend of that kind!
@@ -33,15 +43,16 @@ over roughly the first 60 levels and then gently plateaus:
 Within each 5-level block difficulty rises then resets, so a tough level is
 followed by a breather. Every level is winnable and retries are always free.
 
-**The cast (the "Ocean Princess" theme).** Original characters, generated as
-soft-3D toy renders and embedded in the game:
-- **Melia** and **Coral** — pick your mermaid on the start screen; she cheers
-  when you win (with **Maestro** the lobster conductor).
+**The cast (the "Ocean Princess" theme).** Original characters, generated
+with Gemini Nano Banana in a painterly bioluminescent style and embedded in
+the game:
+- **Ophelia** and **Jaclyn** — pick your mermaid on the start screen; she
+  cheers when you win (with **Maestro** the lobster conductor).
 - **Finn** the worried little fish encourages you on the try-again screen.
 - **Morgana** the sea witch is why friends are bubble-trapped from level 8.
 - **King Nerio** congratulates you when you finish each 10-level zone.
 
-**Art & tech.** Painterly zone backgrounds, blind-box-toy character renders,
+**Art & tech.** Painterly zone backgrounds, glowing painterly characters,
 and a liquid-glass UI (frosted board panel, glass bubble tokens, glass HUD —
 plain CSS `backdrop-filter` + canvas, so it works on iPad Safari). All images
 are WebP embedded as data URLs and the Fredoka font (OFL license) is inlined:
