@@ -1,0 +1,16 @@
+{
+  "name": "Mermaid Dots",
+  "short_name": "Mermaid Dots",
+  "description": "A kid-friendly dot-connecting ocean puzzle. No ads, no purchases, just fun.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#0a2050",
+  "theme_color": "#0a2050",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

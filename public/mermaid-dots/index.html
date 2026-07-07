@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Mermaid Dots 🧜‍♀️</title>
+<meta name="theme-color" content="#0a2050">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
   @font-face {
     font-family: "Fredoka";
@@ -157,14 +160,6 @@
     animation:lowPulse 1.1s ease-in-out infinite;
   }
 
-  .pick { position:relative; }
-  .pick .edit {
-    position:absolute; top:4px; right:4px; z-index:2;
-    width:38px; height:38px; border-radius:50%; border:none; cursor:pointer;
-    background:rgba(255,255,255,0.22); font-size:15px; line-height:1;
-    touch-action:manipulation;
-  }
-
   @media (prefers-reduced-motion: reduce){
     .card .big, .card .heroImg, .winRow .sideImg { animation:none; }
     #movesBox.low { animation:none; }
@@ -198,8 +193,8 @@
     <img id="logoImg" alt="Mermaid Dots">
     <p>Help the mermaids collect their sea friends! Draw a line between <b>2 or more matching</b> friends. Make a <b>loop</b> for a big SPLASH!</p>
     <div class="pickRow">
-      <div class="pick" id="pickCoral"><button class="edit" id="editCoral" title="Rename" aria-label="Rename this mermaid">✏️</button><img alt="Coral"><span id="nameCoral">Coral</span></div>
-      <div class="pick" id="pickMelia"><button class="edit" id="editMelia" title="Rename" aria-label="Rename this mermaid">✏️</button><img alt="Melia"><span id="nameMelia">Melia</span></div>
+      <div class="pick" id="pickCoral"><img alt="Ophelia"><span id="nameCoral">Ophelia</span></div>
+      <div class="pick" id="pickMelia"><img alt="Jaclyn"><span id="nameMelia">Jaclyn</span></div>
     </div>
     <button class="btn" id="playBtn" disabled>Loading…</button>
     <div class="promise" id="starTotal" style="display:none"></div>
@@ -321,10 +316,7 @@ const store = {
 let level = parseInt(store.get("mermaidDots.level", "1"), 10) || 1;
 let muted = store.get("mermaidDots.muted", "") === "1";
 let hero  = store.get("mermaidDots.hero", "melia");
-let names = {
-  coral: store.get("mermaidDots.nameCoral", "Coral"),
-  melia: store.get("mermaidDots.nameMelia", "Melia"),
-};
+const names = { coral: "Ophelia", melia: "Jaclyn" };
 let rescued;
 try { rescued = JSON.parse(store.get("mermaidDots.rescued", "{}")); } catch(e){ rescued = {}; }
 if (!rescued || typeof rescued !== "object") rescued = {};
@@ -393,7 +385,7 @@ function layout(){
   canvas.style.width = W + "px"; canvas.style.height = H + "px";
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   hudH = document.getElementById("hud").offsetHeight + 6;
-  cell = Math.min((W - 16) / COLS, (H - hudH - 66) / ROWS, 92);
+  cell = Math.min((W - 60) / COLS, (H - hudH - 66) / ROWS, 92);
   boardX = (W - cell * COLS) / 2;
   boardY = hudH + (H - hudH - cell * ROWS) / 2 - 8;
   if (assetsReady){ bakeSprites(); makeFrost(); }
@@ -1353,22 +1345,6 @@ $("aquaClose").addEventListener("click", () => {
 });
 
 /* ---------- mermaid renaming ---------- */
-function applyNames(){
-  $("nameCoral").textContent = names.coral;
-  $("nameMelia").textContent = names.melia;
-}
-function renameMermaid(key){
-  let v = null;
-  try { v = prompt("Name your mermaid!", names[key]); } catch(e){}
-  if (v && v.trim()){
-    names[key] = v.trim().slice(0, 14);
-    store.set(key === "coral" ? "mermaidDots.nameCoral" : "mermaidDots.nameMelia", names[key]);
-    applyNames();
-  }
-}
-$("editCoral").addEventListener("click", e => { e.stopPropagation(); renameMermaid("coral"); });
-$("editMelia").addEventListener("click", e => { e.stopPropagation(); renameMermaid("melia"); });
-
 /* ---------- buttons ---------- */
 function setHero(h){
   hero = h;
@@ -1423,8 +1399,11 @@ layout();
 initBubbles();
 setMuteIcon();
 setHero(hero);
-applyNames();
 requestAnimationFrame(frame);
+
+// installable PWA when served over http(s); harmless no-op for file:// play
+if ("serviceWorker" in navigator && location.protocol.startsWith("http"))
+  navigator.serviceWorker.register("sw.js").catch(() => {});
 
 loadAll.then(() => {
   assetsReady = true;
