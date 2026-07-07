@@ -210,6 +210,8 @@
     opacity:0; transition:opacity .6s ease; pointer-events:none; }
   #winOverlay.vidmode #winVid { opacity:1; }
   #winOverlay.vidmode .winRow { display:none; }
+  /* card drops to the bottom so the dancer owns the screen */
+  #winOverlay.vidmode { justify-content:flex-end; padding-bottom:84px; }
   .winRow { position:relative; display:flex; align-items:center; justify-content:center; min-height:244px; }
   .winRow::before {  /* radiant burst behind the dancing mermaid */
     content:""; position:absolute; width:250px; height:250px; border-radius:50%;
