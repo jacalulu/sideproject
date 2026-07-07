@@ -21,6 +21,10 @@ next time it's opened (the service worker fetches network-first). No
 app store, no build step, no review queue.
 
 **How to play**
+- Start from the **adventure map**: a scrollable trail that winds up
+  through the ocean zones, ten levels per zone painting. Tap any level
+  you've beaten to replay it (your stars and progress are never lost);
+  winning always unlocks the next level on the trail.
 - Drag a line between 2 or more matching sea friends to collect them.
 - Close a **loop** (like a square) to splash away every friend of that kind!
 - Collect the friends shown at the top before the wave counter 🌊 runs out.
