@@ -161,15 +161,22 @@
   }
 
   @media (prefers-reduced-motion: reduce){
-    .card .big, .card .heroImg, .winRow .sideImg { animation:none; }
+    .card .big, .card .heroImg, .heroStack { animation:none; }
+    .winRow::before { animation:none; }
     #movesBox.low { animation:none; }
     .swimmer, .swimmer img { animation:none !important; }
   }
 
-  .winRow { display:flex; align-items:flex-end; gap:6px; }
-  .winRow .heroImg { height:168px; }
-  .winRow .sideImg { height:88px; margin-bottom:4px;
-    filter:drop-shadow(0 8px 12px rgba(0,20,60,.45)); animation:bob 2.4s .3s ease-in-out infinite; }
+  .winRow { position:relative; display:flex; align-items:center; justify-content:center; min-height:244px; }
+  .winRow::before {  /* radiant burst behind the dancing mermaid */
+    content:""; position:absolute; width:250px; height:250px; border-radius:50%;
+    background:radial-gradient(circle, rgba(140,230,255,.5), rgba(190,150,255,.25) 55%, transparent 72%);
+    animation:glowPulse 1.7s ease-in-out infinite;
+  }
+  @keyframes glowPulse { 50% { transform:scale(1.16); opacity:.75; } }
+  .heroStack { position:relative; z-index:1; animation:bob 3s ease-in-out infinite; }
+  .heroStack img { height:232px; display:block; }
+  #winImg2 { position:absolute; left:0; top:0; opacity:0; transition:opacity .09s linear; }
 </style>
 </head>
 <body>
@@ -206,8 +213,10 @@
   <div class="card glass">
     <div class="stars" id="starRow"><span>⭐</span><span>⭐</span><span>⭐</span></div>
     <div class="winRow">
-      <img class="chara heroImg" id="winImg" alt="">
-      <img class="chara sideImg" id="winSide" alt="Maestro">
+      <div class="heroStack">
+        <img class="chara" id="winImg" alt="">
+        <img class="chara" id="winImg2" alt="" aria-hidden="true">
+      </div>
     </div>
     <h2 id="winTitle">Level Complete!</h2>
     <p id="winText"></p>
@@ -618,15 +627,26 @@ let winAnimTimer = null, winFrame = 0;
 function startWinAnim(){
   stopWinAnim();
   const frames = WIN_FRAMES[hero];
-  $("winImg").src = ASSETS[frames[0]];
+  const a = $("winImg"), b = $("winImg2");
+  a.src = ASSETS[frames[0]];
   if (REDUCED) return;                 // reduced motion: hold the first pose
   winFrame = 0;
+  let bOnTop = false;
+  // double-buffered crossfade: the next frame melts over the current one,
+  // which reads as motion instead of a hard sticker flip
   winAnimTimer = setInterval(() => {
     winFrame = (winFrame + 1) % frames.length;
-    $("winImg").src = ASSETS[frames[winFrame]];
-  }, 125);
+    const next = ASSETS[frames[winFrame]];
+    if (bOnTop){ a.src = next; b.style.opacity = 0; }
+    else       { b.src = next; b.style.opacity = 1; }
+    bOnTop = !bOnTop;
+  }, 110);
 }
-function stopWinAnim(){ clearInterval(winAnimTimer); winAnimTimer = null; }
+function stopWinAnim(){
+  clearInterval(winAnimTimer); winAnimTimer = null;
+  const b = $("winImg2");
+  if (b){ b.style.opacity = 0; b.removeAttribute("src"); }
+}
 function winSound(){ [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f, 0.35, "triangle", 0.2), i*130)); }
 
 /* ---------- toast ---------- */
@@ -1079,7 +1099,6 @@ function afterSettle(){
       : "You found all the friends — they're safe with the mermaids now!";
     if (zoneDone){ stopWinAnim(); $("winImg").src = ASSETS.kingNerio; }
     else startWinAnim();
-    $("winSide").style.display = zoneDone ? "none" : "";
     const wr = $("winRescue");
     wr.style.display = rescuedThisLevel > 0 ? "" : "none";
     wr.textContent = "🫧 You rescued " + rescuedThisLevel +
@@ -1511,7 +1530,16 @@ function applyStaleBuild(){
   return true;
 }
 checkBuild();
-document.addEventListener("visibilitychange", () => { if (!document.hidden) checkBuild(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden){            // screen off / app backgrounded: go quiet
+    if (music) music.pause();
+    hushed();
+    return;
+  }
+  if (!muted && state !== "menu") startMusic();
+  checkBuild();
+});
+window.addEventListener("pagehide", () => { if (music) music.pause(); });
 
 loadAll.then(() => {
   assetsReady = true;
@@ -1519,7 +1547,6 @@ loadAll.then(() => {
   $("logoImg").src = ASSETS.logo;
   $("pickCoral").querySelector("img").src = ASSETS.coralHero;
   $("pickMelia").querySelector("img").src = ASSETS.meliaHero;
-  $("winSide").src = ASSETS.maestro;
   $("loseImg").src = ASSETS.finn;
   $("storyImg").src = ASSETS.morgana;
   const pb = $("playBtn");
