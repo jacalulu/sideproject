@@ -35,7 +35,9 @@
 
   /* ---- HUD ---- */
   #hud {
-    position:absolute; top:0; left:0; right:0; z-index:5;
+    /* above the overlays (10) so mute/refresh stay tappable while a card
+       is up — the overlay backdrop used to swallow those taps */
+    position:absolute; top:0; left:0; right:0; z-index:12;
     display:flex; align-items:center; justify-content:space-between;
     gap:8px; pointer-events:none;
     padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
@@ -52,7 +54,7 @@
     filter:drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
   .goalChip.done { opacity:.6; }
   .goalChip.bump { transform:scale(1.25); }
-  #btns { position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:8px; pointer-events:auto; z-index:6; }
+  #btns { position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:8px; pointer-events:auto; z-index:12; }
   .iconBtn {
     color:#fff; width:44px; height:44px; border-radius:50%; font-size:19px; cursor:pointer;
     touch-action:manipulation;
@@ -744,6 +746,9 @@ let currentFact = null, lastFactLevel = 0;
 let currentUtter = null;   // held globally — Chrome kills speech if the utterance is GC'd
 let factPlaying = false, factDone = false;
 let wordTimer = null, safetyTimer = null;
+// measured speaking speed of THIS device's voice (chars/sec); refined after
+// every spoken fact so the karaoke pacing converges on the real voice
+let ttsCps = parseFloat(store.get("mermaidDots.ttsCps", "")) || 11.5;
 
 function hushed(){ try { speechSynthesis.cancel(); } catch(e){} }
 
@@ -817,20 +822,22 @@ function playFact(){
         setWordOn(words[i]);
         wordTimer = setTimeout(step, totalMs * weights[i] / sum);
         i++;
-      } else finishFact(500);
+      } else if (!started) finishFact(500);
+      // if the voice is speaking, hold the last word — its real onend
+      // closes the fact, so the estimate can never cut speech off early
     };
     step();
   };
-  const estMs = text.length * 75;   // ≈13 characters/second at rate 0.9
+  const estMs = text.length / ttsCps * 1000;   // paced by this device's measured voice speed
 
-  let spoke = false;
+  let spoke = false, t0 = 0;
   if ("speechSynthesis" in window){
     try {
       speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
       currentUtter = u;
       u.lang = "en-US"; u.rate = 0.9; u.pitch = 1.05;
-      u.onstart = () => { started = true; if (!gotBoundary) paced(estMs); };
+      u.onstart = () => { started = true; t0 = performance.now(); if (!gotBoundary) paced(estMs); };
       u.onboundary = e => {
         if (typeof e.charIndex === "number"){
           gotBoundary = true;                // real word timings — use those
@@ -838,7 +845,16 @@ function playFact(){
           highlightAt(e.charIndex);
         }
       };
-      u.onend = () => finishFact(450);
+      u.onend = () => {
+        if (started && !factDone){
+          const secs = (performance.now() - t0) / 1000;
+          if (secs > 1.5){   // calibrate: next fact paces at the voice's true speed
+            ttsCps = Math.min(25, Math.max(5, ttsCps * 0.4 + (text.length / secs) * 0.6));
+            store.set("mermaidDots.ttsCps", ttsCps.toFixed(2));
+          }
+        }
+        finishFact(450);
+      };
       // Chrome-on-Android swallows speak() fired in the same tick as cancel()
       setTimeout(() => {
         try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch(e){}
@@ -848,7 +864,7 @@ function playFact(){
   }
   // no speech at all (unsupported, or it never started): highlight anyway
   setTimeout(() => { if (factPlaying && !started && !gotBoundary) paced(estMs); }, spoke ? 1200 : 0);
-  safetyTimer = setTimeout(() => finishFact(0), 4000 + text.length * 110);
+  safetyTimer = setTimeout(() => finishFact(0), 6000 + text.length * 140);
 }
 
 function finishFact(delay){
@@ -1471,10 +1487,16 @@ $("factBtn").addEventListener("click", () => {
   if (currentFact) playFact();
 });
 $("retryBtn").addEventListener("click", () => {
+  checkBuild();                     // refresh tap also notices new builds
+  if (applyStaleBuild()) return;    // pending update? apply it right now
   if (state === "idle" || state === "fall") $("retryOverlay").classList.remove("hidden");
 });
 $("retryYes").addEventListener("click", () => {
   $("retryOverlay").classList.add("hidden");
+  if (applyStaleBuild()) return;
+  // restarting from the fun-fact splash: close it out first so the fresh
+  // board isn't hidden behind it
+  if (!$("factOverlay").classList.contains("hidden")) finishFact(0);
   startLevel();
 });
 $("retryNo").addEventListener("click", () => {
@@ -1495,6 +1517,10 @@ layout();
 initBubbles();
 setMuteIcon();
 setHero(hero);
+// HUD reflects saved progress immediately (it used to say "Level 1" until
+// the first level actually started)
+$("levelNum").textContent = "Level " + level;
+$("zoneName").textContent = zone.em + " " + zone.name;
 requestAnimationFrame(frame);
 
 // installable PWA when served over http(s); harmless no-op for file:// play
