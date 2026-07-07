@@ -85,6 +85,11 @@
   #splashBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
     animation:splashZoom 4.5s ease-out forwards; }
   @keyframes splashZoom { from { transform:scale(1.12); } to { transform:scale(1); } }
+  /* the Veo clip fades in over the still once it can play (lazy-loaded;
+     absent offline or on file://, where the still carries the intro) */
+  #splashVid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    opacity:0; transition:opacity .6s ease; }
+  #splashVid.on { opacity:1; }
   .sRay { position:absolute; top:-20%; left:20%; width:34%; height:80%;
     background:linear-gradient(180deg, rgba(255,244,190,.30), transparent 75%);
     transform:skewX(-14deg); filter:blur(6px); mix-blend-mode:screen;
@@ -216,6 +221,7 @@
 
 <div id="splash">
   <img id="splashBg" alt="">
+  <video id="splashVid" muted playsinline loop preload="auto" aria-hidden="true"></video>
   <div class="sRay r1"></div><div class="sRay r2"></div>
   <div id="sBubbles"></div>
   <img id="splashLogo" alt="Mermaid Dots">
@@ -1780,7 +1786,22 @@ requestAnimationFrame(frame);
     setTimeout(() => sp.remove(), 800);
   };
   sp.addEventListener("pointerdown", dismiss);      // tap to skip
-  setTimeout(dismiss, REDUCED ? 1400 : 3400);
+  let dismissTimer = setTimeout(dismiss, REDUCED ? 1400 : 3400);
+
+  // Veo intro clip: lazy-loaded so the still shows instantly; the video
+  // fades in over it when ready and earns the splash a little more time
+  const vid = $("splashVid");
+  if (!REDUCED && location.protocol.startsWith("http")){
+    vid.src = "assets/splash.mp4";
+    vid.addEventListener("canplaythrough", () => {
+      if (gone) return;
+      vid.play().then(() => {
+        vid.classList.add("on");
+        clearTimeout(dismissTimer);
+        dismissTimer = setTimeout(dismiss, 4600);
+      }).catch(() => {});
+    }, { once: true });
+  }
 })();
 
 // installable PWA when served over http(s); harmless no-op for file:// play
