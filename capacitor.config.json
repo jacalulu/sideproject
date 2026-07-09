@@ -1,0 +1,9 @@
+{
+  "appId": "com.jacalulu.mermaiddots",
+  "appName": "Mermaid Dots",
+  "webDir": "public/mermaid-dots",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#0a2050"
+  }
+}
