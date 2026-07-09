@@ -20,6 +20,15 @@ fullscreen app (PWA manifest + service worker). Each later merge to
 next time it's opened (the service worker fetches network-first). No
 app store, no build step, no review queue.
 
+**iPhone via TestFlight:** the repo carries a Capacitor iOS project
+(`ios/`, `capacitor.config.json`) and a manual **iOS TestFlight**
+GitHub Actions workflow that builds on a macOS runner and uploads with
+Fastlane using cloud-managed signing. One-time setup: enroll in the
+Apple Developer Program, create the app record + an App Store Connect
+API key, add the four repo secrets named in
+`.github/workflows/ios-testflight.yml`, then run the workflow from the
+Actions tab. Each run uploads a new TestFlight build.
+
 **How to play**
 - Start from the **adventure map**: a scrollable trail that winds up
   through the ocean zones, ten levels per zone painting. Tap any level

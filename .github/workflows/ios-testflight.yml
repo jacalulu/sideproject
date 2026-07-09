@@ -1,0 +1,43 @@
+name: iOS TestFlight
+
+# Manual trigger: run from the Actions tab once the four Apple secrets are set.
+# Requires repo secrets:
+#   APP_STORE_CONNECT_KEY_ID      - App Store Connect API key ID
+#   APP_STORE_CONNECT_ISSUER_ID   - App Store Connect issuer ID
+#   APP_STORE_CONNECT_KEY_B64     - the .p8 key file, base64-encoded
+#   APPLE_TEAM_ID                 - 10-char Apple Developer team ID
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Capacitor and sync web app into the iOS project
+        run: |
+          npm ci || npm install
+          npx cap sync ios
+
+      - name: Write App Store Connect API key to disk for xcodebuild
+        run: |
+          mkdir -p ~/private_keys
+          echo "$APP_STORE_CONNECT_KEY_B64" | base64 -d > ~/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_ID.p8
+          echo "ASC_KEY_PATH=$HOME/private_keys/AuthKey_$APP_STORE_CONNECT_KEY_ID.p8" >> "$GITHUB_ENV"
+        env:
+          APP_STORE_CONNECT_KEY_B64: ${{ secrets.APP_STORE_CONNECT_KEY_B64 }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+
+      - name: Build and upload to TestFlight
+        run: fastlane ios beta
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_KEY_B64: ${{ secrets.APP_STORE_CONNECT_KEY_B64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

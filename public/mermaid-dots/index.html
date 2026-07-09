@@ -407,6 +407,9 @@ let particles = [], rings = [], bubbles = [];
 let lastT = 0;
 let assetsReady = false;
 const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+// http(s) = hosted (Pages); capacitor: = the native iOS/Android app shell,
+// where relative video URLs resolve into the bundled assets
+const CAN_MEDIA = location.protocol.startsWith("http") || location.protocol === "capacitor:";
 
 /* ---------- asset loading ---------- */
 const IMGS = {};
@@ -717,7 +720,7 @@ function stopWinAnim(){
 const WIN_VIDS = { melia: "win-jaclyn", coral: "win-ophelia" };
 let winVidHero = null;
 function prepWinVid(){   // kick off the download early (start of a level)
-  if (REDUCED || !location.protocol.startsWith("http")) return;
+  if (REDUCED || !CAN_MEDIA) return;
   if (winVidHero === hero) return;
   const v = $("winVid");
   const base = "assets/" + WIN_VIDS[hero];
@@ -727,7 +730,7 @@ function prepWinVid(){   // kick off the download early (start of a level)
   winVidHero = hero;
 }
 function startWinVid(){
-  if (REDUCED || !location.protocol.startsWith("http")) return;
+  if (REDUCED || !CAN_MEDIA) return;
   const v = $("winVid");
   prepWinVid();
   const go = () => {
@@ -1846,7 +1849,7 @@ requestAnimationFrame(frame);
   // Veo intro clip: lazy-loaded so the still shows instantly; the video
   // fades in over it when ready and earns the splash a little more time
   const vid = $("splashVid");
-  if (!REDUCED && location.protocol.startsWith("http")){
+  if (!REDUCED && CAN_MEDIA){
     // webm first (plays everywhere Chromium does), mp4 for Safari
     vid.innerHTML = '<source src="assets/splash.webm" type="video/webm">' +
                     '<source src="assets/splash.mp4" type="video/mp4">';
