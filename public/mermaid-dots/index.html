@@ -51,11 +51,20 @@
   .hudBox .zone { font-size:12.5px; opacity:.92; letter-spacing:.5px; }
   #movesNum { display:flex; align-items:center; gap:5px; }
   .waveIco { width:24px; height:24px; object-fit:contain; }
-  .goalChip { display:flex; align-items:center; gap:6px; transition:transform .15s; }
-  .goalChip img { width:34px; height:34px; object-fit:contain; display:block;
+  .goalChip { display:flex; align-items:center; gap:7px; transition:transform .15s; }
+  .goalChip img { width:44px; height:44px; object-fit:contain; display:block;
     filter:drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
+  .goalChip .goalNum { font-size:23px; min-width:1.1em; text-align:center; }
   .goalChip.done { opacity:.6; }
   .goalChip.bump { transform:scale(1.25); }
+  /* a collected friend just zoomed home: pop + golden glow */
+  @keyframes chipPop { 0%{ transform:scale(1); } 40%{ transform:scale(1.45); } 100%{ transform:scale(1); } }
+  .goalChip.pop { animation:chipPop .32s ease-out; }
+  .goalChip.pop img { filter:drop-shadow(0 0 12px rgba(255,238,160,.95)) drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
+  /* "look up here!" nudge on the whole goal row */
+  @keyframes goalNudge { 0%,100%{ transform:scale(1); } 35%{ transform:scale(1.3); } }
+  #goalsBox.remind .goalChip { animation:goalNudge .75s ease-in-out 3; }
+  #goalsBox.remind .goalChip img { filter:drop-shadow(0 0 10px rgba(255,238,160,.95)) drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
   #btns { position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:12px; pointer-events:auto; z-index:12; }
   .iconBtn {
     width:64px; height:64px; padding:0; border:none; background:none; border-radius:50%;
@@ -70,7 +79,8 @@
     #hud { gap:5px; padding:8px 8px; }
     .hudBox { padding:5px 9px; font-size:14.5px; gap:7px; border-radius:16px; }
     #levelBox { padding:4px 10px; }
-    .goalChip img { width:22px; height:22px; }
+    .goalChip img { width:32px; height:32px; }
+    .goalChip .goalNum { font-size:18px; }
   }
 
   #toast {
@@ -208,6 +218,7 @@
     .winRow::before { animation:none; }
     #movesBox.low { animation:none; }
     .swimmer, .swimmer img { animation:none !important; }
+    .goalChip.pop, #goalsBox.remind .goalChip { animation:none; }
   }
 
   /* full-screen Veo celebration behind the frosted win card; when it's
@@ -396,7 +407,10 @@ let rescuedThisLevel = 0;
 let starsByLevel;
 try { starsByLevel = JSON.parse(store.get("mermaidDots.stars", "{}")); } catch(e){ starsByLevel = {}; }
 if (!starsByLevel || typeof starsByLevel !== "object") starsByLevel = {};
-let lastAction = 0, hintPair = null;   // gentle nudge when a kid is stuck
+let lastAction = 0, hintCells = null, hintKind = "";  // gentle nudge when a kid is stuck
+let flyers = [];            // collected friends zooming up to their goal chip
+let offGoalStreak = 0;      // moves in a row that didn't collect a goal friend
+let squareToastShown = false, introPending = false, remindTimer = null;
 
 let grid = [];
 let levelCfg = null, activeTypes = [], goals = [], moves = 0;
@@ -586,10 +600,11 @@ function newDot(){
 function startLevel(){
   levelCfg = levelConfig(level);
   activeTypes = levelCfg.active;
-  goals = levelCfg.goals.map(g => ({ ...g }));
+  goals = levelCfg.goals.map(g => ({ ...g, disp: g.left }));
   moves = levelCfg.moves;
   zone = levelCfg.zone;
   COLS = ROWS = levelCfg.size;
+  updateHud();   // fill the goal chips first so layout measures the real HUD height
   layout();
 
   grid = [];
@@ -609,8 +624,9 @@ function startLevel(){
   }
   ensurePlayable();
 
-  path = []; loopClosed = false; particles = []; rings = [];
+  path = []; loopClosed = false; particles = []; rings = []; flyers = [];
   rescuedThisLevel = 0;
+  offGoalStreak = 0; squareToastShown = false; introPending = true; hintCells = null;
   state = "fall";
   updateHud();
   prepWinVid();
@@ -628,11 +644,13 @@ function updateHud(){
   movesBox.style.visibility = "";
   $("movesCount").textContent = moves;
   movesBox.classList.toggle("low", state !== "menu" && moves <= 5);
-  goalsBox.innerHTML = goals.map((g, i) =>
-    `<span class="goalChip${g.left <= 0 ? " done" : ""}" id="gc${i}">` +
-    `<img src="${ASSETS[g.type.img]}" alt="${g.type.name}">` +
-    `${g.left <= 0 ? "✓" : g.left}</span>`
-  ).join("");
+  goalsBox.innerHTML = goals.map((g, i) => {
+    // the shown count lags the real one while collected friends fly home
+    const shown = Math.max(g.left, Math.min(g.disp ?? g.left, g.total));
+    return `<span class="goalChip${shown <= 0 ? " done" : ""}" id="gc${i}">` +
+      `<img src="${ASSETS[g.type.img]}" alt="${g.type.name}">` +
+      `<b class="goalNum">${shown <= 0 ? "✓" : shown}</b></span>`;
+  }).join("");
 }
 function bumpGoal(i){
   const el = $("gc" + i);
@@ -772,7 +790,7 @@ function openMap(){
   stopWinAnim();
   stopWinVid();
   state = "map";
-  path = []; loopClosed = false; pointerPos = null; mapDragging = false;
+  path = []; loopClosed = false; pointerPos = null; mapDragging = false; flyers = [];
   mapScroll = Math.min(mapMaxScroll(), Math.max(0, mapWorldY(progress) - H * 0.55));
   $("levelNum").textContent = "🗺️ Map";
   $("zoneName").textContent = "tap a level!";
@@ -1144,7 +1162,7 @@ const inPath = p => path.some(q => sameCell(p, q));
 
 canvas.addEventListener("pointerdown", e => {
   ensureAudio();
-  lastAction = lastT; hintPair = null;
+  lastAction = lastT; hintCells = null;
   if (state === "map"){
     mapDragging = true; mapMoved = false;
     mapDragStartY = e.clientY; mapScrollStart = mapScroll;
@@ -1270,6 +1288,7 @@ function clearPath(){
       if (!seen.has(k)){ seen.add(k); targets.push(p); }
     }
   }
+  const origins = targets.map(p => ({ x: cx(p.c), y: cy(p.r) + grid[p.r][p.c].yOff }));
   for (const p of targets){
     burst(cx(p.c), cy(p.r) + grid[p.r][p.c].yOff, type);
     rings.push({ x: cx(p.c), y: cy(p.r), r: cell * 0.3, max: cell * 0.75, t: 0, color: type.main });
@@ -1299,9 +1318,18 @@ function clearPath(){
   }
 
   const gi = goals.findIndex(g => g.type.key === type.key);
+  let collected = 0;
   if (gi >= 0){
-    goals[gi].left = Math.max(0, goals[gi].left - targets.length);
-    bumpGoal(gi);
+    const before = goals[gi].left;
+    goals[gi].left = Math.max(0, before - targets.length);
+    collected = before - goals[gi].left;
+    if (collected > 0) spawnFlyers(origins.slice(0, collected), type, gi);
+  }
+  // two moves in a row that didn't help the goals: point back at the chips
+  if (collected > 0 || popped) offGoalStreak = 0;
+  else if (++offGoalStreak >= 2){
+    offGoalStreak = 0;
+    remindGoals("Collect the friends up top! ⬆️");
   }
   moves--;
   path = []; loopClosed = false;
@@ -1339,23 +1367,97 @@ function ensurePlayable(){
   }
 }
 
-function findHintPair(){
-  const pairs = [];
+/* every 2×2 same-type square — the easiest loop a small hand can draw */
+function findSquares(){
+  const out = [];
+  for (let r = 0; r + 1 < ROWS; r++)
+    for (let c = 0; c + 1 < COLS; c++){
+      const d = grid[r][c];
+      if (!d || d.trapped) continue;
+      const ok = p => p && !p.trapped && p.type === d.type;
+      if (ok(grid[r][c+1]) && ok(grid[r+1][c+1]) && ok(grid[r+1][c]))
+        out.push({ key: d.type.key,
+                   cells: [{r, c}, {r, c: c+1}, {r: r+1, c: c+1}, {r: r+1, c}] });
+    }
+  return out;
+}
+
+/* largest connected patch (4-way) of the given type keys; null keys = any type */
+function findGroup(keys){
+  const seen = new Set();
+  let best = null;
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++){
       const d = grid[r][c];
-      if (!d || d.trapped) continue;
-      if (c + 1 < COLS && grid[r][c+1] && !grid[r][c+1].trapped && grid[r][c+1].type === d.type)
-        pairs.push([{r, c}, {r, c: c+1}]);
-      if (r + 1 < ROWS && grid[r+1][c] && !grid[r+1][c].trapped && grid[r+1][c].type === d.type)
-        pairs.push([{r, c}, {r: r+1, c}]);
+      if (!d || d.trapped || seen.has(r + "," + c)) continue;
+      if (keys && !keys.has(d.type.key)) continue;
+      const comp = [], stack = [{r, c}];
+      seen.add(r + "," + c);
+      while (stack.length){
+        const p = stack.pop();
+        comp.push(p);
+        for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+          const rr = p.r + dr, cc = p.c + dc, k = rr + "," + cc;
+          if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS || seen.has(k)) continue;
+          const q = grid[rr][cc];
+          if (q && !q.trapped && q.type === d.type){ seen.add(k); stack.push({ r: rr, c: cc }); }
+        }
+      }
+      if (comp.length >= 2 && (!best || comp.length > best.length)) best = comp;
     }
-  if (!pairs.length) return null;
-  // prefer hinting a goal type so the nudge also teaches strategy
-  const goalKeys = goals.filter(g => g.left > 0).map(g => g.type.key);
-  const goalPairs = pairs.filter(p => goalKeys.includes(grid[p[0].r][p[0].c].type.key));
-  const pool = goalPairs.length ? goalPairs : pairs;
-  return pool[Math.floor(Math.random() * pool.length)];
+  return best;
+}
+
+/* what to glow: a goal-type square beats a goal-type patch beats anything —
+   the nudge teaches "collect the friends up top" and "squares make splashes" */
+function findHint(){
+  const goalKeys = new Set(goals.filter(g => g.left > 0).map(g => g.type.key));
+  const squares = findSquares();
+  const goalSquares = squares.filter(s => goalKeys.has(s.key));
+  if (goalSquares.length)
+    return { kind: "square", cells: goalSquares[Math.floor(Math.random() * goalSquares.length)].cells };
+  const goalGroup = findGroup(goalKeys);
+  if (goalGroup) return { kind: "group", cells: goalGroup };
+  if (squares.length)
+    return { kind: "square", cells: squares[Math.floor(Math.random() * squares.length)].cells };
+  const any = findGroup(null);
+  return any ? { kind: "group", cells: any } : null;
+}
+
+/* collected friends zoom up to their goal chip; the count ticks as they land */
+function spawnFlyers(origins, type, gi){
+  const g = goals[gi];
+  const chip = $("gc" + gi);
+  if (!g) return;
+  if (!chip || REDUCED){ g.disp = g.left; updateHud(); bumpGoal(gi); return; }
+  const rect = chip.getBoundingClientRect();
+  const tx = rect.left + rect.width / 2, ty = rect.top + rect.height / 2;
+  origins.forEach((o, i) => {
+    flyers.push({ x0: o.x, y0: o.y, tx, ty, gi, key: type.key,
+                  t: -i * 0.07, dur: 0.5 + Math.random() * 0.12,
+                  bend: (Math.random() - 0.5) * cell * 2 });
+  });
+}
+function landFlyer(f){
+  const g = goals[f.gi];
+  if (g) g.disp = Math.max(g.left, (g.disp ?? g.left) - 1);
+  const chip = $("gc" + f.gi);
+  if (chip && g){
+    const num = chip.querySelector(".goalNum");
+    if (num) num.textContent = g.disp <= 0 ? "✓" : g.disp;
+    chip.classList.toggle("done", g.disp <= 0);
+    chip.classList.remove("pop"); void chip.offsetWidth; chip.classList.add("pop");
+  }
+  tone(880 + Math.random() * 160, 0.08, "triangle", 0.14);
+}
+
+/* pulse the goal chips and point up — "these are what we're collecting!" */
+function remindGoals(msg){
+  toast(msg, true);
+  goalsBox.classList.remove("remind"); void goalsBox.offsetWidth;
+  goalsBox.classList.add("remind");
+  clearTimeout(remindTimer);
+  remindTimer = setTimeout(() => goalsBox.classList.remove("remind"), 2400);
 }
 
 function hasAnyMove(){
@@ -1560,8 +1662,8 @@ function render(t){
         const inSel = state === "drag" && !d.trapped &&
           d.type === (path.length ? grid[path[0].r][path[0].c].type : null) && inPathDot(d);
         const glowing = inSel || (loopType && d.type === loopType && !d.trapped);
-        const hinted = hintPair && state === "idle" &&
-          ((r === hintPair[0].r && c === hintPair[0].c) || (r === hintPair[1].r && c === hintPair[1].c));
+        const hinted = hintCells && state === "idle" &&
+          hintCells.some(p => p.r === r && p.c === c);
         if (glowing) d.scale = Math.min(1.18, d.scale + 0.035);
         else d.scale += (1 - d.scale) * 0.2;
         if (hinted){
@@ -1589,6 +1691,22 @@ function render(t){
         }
         ctx.restore();
       }
+    }
+
+    // loop nudge: marching dashes trace the square she could draw
+    if (state === "idle" && hintKind === "square" && hintCells){
+      ctx.save();
+      ctx.globalAlpha = 0.45 + 0.3 * Math.sin(t * 4);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
+      ctx.setLineDash([9, 13]);
+      ctx.lineDashOffset = -t * 36;
+      ctx.beginPath();
+      ctx.moveTo(cx(hintCells[0].c), cy(hintCells[0].r));
+      for (let i = 1; i < hintCells.length; i++) ctx.lineTo(cx(hintCells[i].c), cy(hintCells[i].r));
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
     }
   }
 
@@ -1626,6 +1744,26 @@ function drawEffects(){
     }
   }
   ctx.globalAlpha = 1;
+
+  // collected friends arcing up into their goal chip, sparkling as they go
+  for (const f of flyers){
+    if (f.t <= 0) continue;
+    const p = Math.min(1, f.t / f.dur);
+    const e = p * p * (3 - 2 * p);
+    const u = 1 - e;
+    const mx = (f.x0 + f.tx) / 2 + f.bend;
+    const my = Math.min(f.y0, f.ty) - cell * 1.2;
+    const x = u * u * f.x0 + 2 * u * e * mx + e * e * f.tx;
+    const y = u * u * f.y0 + 2 * u * e * my + e * e * f.ty;
+    const s = SPR * (0.85 - 0.5 * e);
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(glows[f.key], x - s * 0.7, y - s * 0.7, s * 1.4, s * 1.4);
+    ctx.globalAlpha = 1;
+    ctx.drawImage(sprites[f.key], x - s / 2, y - s / 2, s, s);
+    if (Math.random() < 0.35)
+      particles.push({ x, y, vx: (Math.random() - 0.5) * 40, vy: 20,
+                       life: 0.35, t: 0, color: "#fff", r: 2 + Math.random() * 2, spark: true });
+  }
 }
 function inPathDot(dot){
   for (const p of path) if (grid[p.r][p.c] === dot) return true;
@@ -1678,10 +1816,35 @@ function frame(ms){
     if (b.y < -12){ b.y = H + 12; b.x = Math.random() * W; }
   }
 
-  // idle hint: after 5 quiet seconds, pulse a matching pair
+  for (const f of flyers){
+    f.t += dt;
+    if (f.t >= f.dur) landFlyer(f);
+  }
+  flyers = flyers.filter(f => f.t < f.dur);
+
+  // first quiet moment of a level: point at the goals so she knows the mission
+  if (introPending && state === "idle" &&
+      $("factOverlay").classList.contains("hidden") &&
+      $("storyOverlay").classList.contains("hidden")){
+    introPending = false;
+    remindGoals("Collect these friends! ⬆️");
+  }
+
+  // idle hint: after a few quiet seconds, glow something helpful — sooner,
+  // and always goal-first, when the waves are running low
   if (state === "idle"){
-    if (t - lastAction > 5 && !hintPair) hintPair = findHintPair();
-  } else { hintPair = null; lastAction = t; }
+    const wait = moves <= 5 ? 2 : 5;
+    if (t - lastAction > wait && !hintCells){
+      const h = findHint();
+      if (h){
+        hintCells = h.cells; hintKind = h.kind;
+        if (h.kind === "square" && !squareToastShown){
+          squareToastShown = true;
+          toast("Draw a square — big SPLASH! 🌊", true);
+        }
+      } else lastAction = t;   // nothing to glow right now; look again shortly
+    }
+  } else { hintCells = null; lastAction = t; }
 
   render(t);
   requestAnimationFrame(frame);
