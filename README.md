@@ -71,7 +71,14 @@ an animated win screen (an 8-frame Nano Banana flipbook of your mermaid
 dancing), a looping background tune composed by Lyria (ducks under the
 narrated fun facts), and a liquid-glass UI (frosted board panel, glass
 bubble tokens, glass HUD —
-plain CSS `backdrop-filter` + canvas, so it works on iPad Safari). All images
+plain CSS `backdrop-filter` + canvas, so it works on iPad Safari).
+Dialog cards sit on a light pearl surface with dark sea-ink text; one
+coral-pink/aqua accent pair carries every screen. The emoji icons are
+replaced by a matching candy-glass icon set and eight zone emblems
+(generated with Nano Banana Pro as sticker sheets, then sliced and
+background-keyed — see `assets/ico-*.webp`, `assets/zone-*.webp`), and
+every character sticker idles with a subtle CSS "alive" float, tuned per
+personality (Finn flutters, King Nerio barely sways). All images
 are WebP embedded as data URLs and the Fredoka font (OFL license) is inlined:
 the whole game is still ONE self-contained ~1 MB HTML file with no
 dependencies. Progress, chosen mermaid, and sound setting persist in the
