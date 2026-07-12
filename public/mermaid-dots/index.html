@@ -42,29 +42,40 @@
     box-shadow:0 4px 18px rgba(4,20,60,0.18);
   }
 
-  /* ---- HUD ---- */
+  /* ---- HUD: goals capsule centered on top, level + waves below ---- */
   #hud {
     /* above the overlays (10) so mute/refresh stay tappable while a card
        is up — the overlay backdrop used to swallow those taps */
     position:absolute; top:0; left:0; right:0; z-index:12;
-    display:flex; align-items:center; justify-content:space-between;
-    gap:8px; pointer-events:none;
+    display:flex; flex-direction:column; gap:8px; pointer-events:none;
     padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 10px calc(12px + env(safe-area-inset-left));
   }
+  .hudRow { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .hudRow.center { justify-content:center; }
+  #goalsBox:empty { display:none; }
   .hudBox {
     border-radius:22px; padding:8px 15px; font-size:17px; letter-spacing:.3px;
     text-shadow:0 1px 2px rgba(0,20,60,.45);
     display:flex; align-items:center; gap:10px; white-space:nowrap;
   }
-  #levelBox, #movesBox { flex-direction:column; gap:0; padding:7px 17px; line-height:1.1; }
+  #levelBox { gap:9px; padding:6px 15px 6px 11px; }
+  .zoneEmblem { width:30px; height:30px; object-fit:contain; }
+  .lvCol { display:flex; flex-direction:column; align-items:flex-start; line-height:1.18; }
+  #movesBox { gap:7px; padding:6px 15px; }
+  #movesCount { font-size:19px; }
   .hudBox .zone { font-size:12.5px; opacity:.92; letter-spacing:.5px; }
-  #movesNum { display:flex; align-items:center; gap:5px; }
-  .waveIco { width:24px; height:24px; object-fit:contain; }
-  .goalChip { display:flex; align-items:center; gap:7px; transition:transform .15s; }
-  .goalChip img { width:44px; height:44px; object-fit:contain; display:block;
+  .waveIco { width:26px; height:26px; object-fit:contain; }
+  #goalsBox { gap:16px; padding:7px 18px; }
+  .goalChip { display:flex; align-items:center; gap:8px; transition:transform .15s; }
+  .goalChip img { width:40px; height:40px; object-fit:contain; display:block;
     filter:drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
-  .goalChip .goalNum { font-size:23px; min-width:1.1em; text-align:center; }
-  .goalChip.done { opacity:.6; }
+  .gp { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .goalChip .goalNum { font-size:16px; line-height:1; font-variant-numeric:tabular-nums; }
+  .gbar { display:block; width:46px; height:5px; border-radius:3px;
+    background:rgba(255,255,255,.28); overflow:hidden; }
+  .gbar i { display:block; height:100%; border-radius:3px; width:0;
+    background:linear-gradient(90deg, var(--coral), var(--gold)); transition:width .3s ease; }
+  .goalChip.done { opacity:.65; }
   .goalChip.bump { transform:scale(1.25); }
   /* a collected friend just zoomed home: pop + golden glow */
   @keyframes chipPop { 0%{ transform:scale(1); } 40%{ transform:scale(1.45); } 100%{ transform:scale(1); } }
@@ -74,22 +85,33 @@
   @keyframes goalNudge { 0%,100%{ transform:scale(1); } 35%{ transform:scale(1.3); } }
   #goalsBox.remind .goalChip { animation:goalNudge .75s ease-in-out 3; }
   #goalsBox.remind .goalChip img { filter:drop-shadow(0 0 10px rgba(255,238,160,.95)) drop-shadow(0 2px 3px rgba(0,20,60,.45)); }
-  #btns { position:fixed; right:calc(12px + env(safe-area-inset-right)); bottom:calc(12px + env(safe-area-inset-bottom)); display:flex; gap:12px; pointer-events:auto; z-index:12; }
+  /* labeled bottom bar, centered — map · aquarium · sound · restart */
+  #btns { position:fixed; left:0; right:0;
+    bottom:calc(10px + env(safe-area-inset-bottom));
+    display:flex; justify-content:center; gap:min(6vw, 30px);
+    pointer-events:auto; z-index:12; }
   .iconBtn {
-    width:64px; height:64px; padding:0; border:none; background:none; border-radius:50%;
+    padding:0; border:none; background:none;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
     cursor:pointer; touch-action:manipulation;
-    filter:drop-shadow(0 5px 9px rgba(0,20,60,.4));
     transition:transform .12s ease;
   }
-  .iconBtn img { width:100%; height:100%; display:block; }
-  .iconBtn:active { transform:scale(.9); }
+  .iconBtn img { width:60px; height:60px; display:block;
+    filter:drop-shadow(0 5px 9px rgba(0,20,60,.4)); }
+  .iconBtn span { font-size:12.5px; color:#fff; letter-spacing:.4px;
+    text-shadow:0 1px 3px rgba(0,20,60,.7); }
   .iconBtn:active { transform:scale(.9); }
   @media (max-width:480px){
     #hud { gap:5px; padding:8px 8px; }
     .hudBox { padding:5px 9px; font-size:14.5px; gap:7px; border-radius:16px; }
-    #levelBox { padding:4px 10px; }
-    .goalChip img { width:32px; height:32px; }
-    .goalChip .goalNum { font-size:18px; }
+    #levelBox { padding:4px 10px 4px 8px; }
+    .zoneEmblem { width:25px; height:25px; }
+    #goalsBox { gap:11px; padding:5px 13px; }
+    .goalChip img { width:31px; height:31px; }
+    .goalChip .goalNum { font-size:14px; }
+    .gbar { width:36px; height:4px; }
+    .iconBtn img { width:52px; height:52px; }
+    .iconBtn span { font-size:11.5px; }
   }
 
   #toast {
@@ -159,9 +181,9 @@
     animation:cardIn .45s cubic-bezier(.2,1.5,.4,1);
   }
   @keyframes cardIn { from { transform:scale(.72); opacity:0; } }
-  .card h2 { font-size:27px; letter-spacing:.5px; }
+  .card h2 { font-size:27px; letter-spacing:.5px; text-wrap:balance; }
   .card p  { font-size:15.5px; line-height:1.45; font-family:"Segoe UI", system-ui, sans-serif;
-    color:var(--ink-soft); text-shadow:none; }
+    color:var(--ink-soft); text-shadow:none; text-wrap:pretty; }
   .card b { color:var(--ink); }
   .card img.chara { filter:drop-shadow(0 10px 18px rgba(0,20,60,.30)); }
   .card .heroImg { height:172px; }
@@ -222,6 +244,7 @@
 
   .btn {
     border:none; cursor:pointer; font-family:inherit;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
     font-size:19px; color:#fff; padding:13px 38px; border-radius:999px; letter-spacing:.5px;
     background:linear-gradient(180deg,var(--coral), var(--coral-deep));
     box-shadow:0 6px 16px rgba(214,55,116,.38);
@@ -234,7 +257,7 @@
     box-shadow:0 6px 16px rgba(24,110,175,.38);
     text-shadow:0 1px 2px rgba(15,80,130,.35);
   }
-  .btn img.btnIco { width:23px; height:23px; vertical-align:-5px; margin:0 1px;
+  .btn img.btnIco { width:23px; height:23px; flex:none;
     filter:drop-shadow(0 1px 2px rgba(0,20,60,.3)); }
 
   /* ---- aquarium ---- */
@@ -305,14 +328,19 @@
 </div>
 
 <div id="hud">
-  <div class="hudBox glass" id="levelBox"><span id="levelNum">Level 1</span><span class="zone" id="zoneName"></span></div>
-  <div class="hudBox glass" id="goalsBox"></div>
-  <div class="hudBox glass" id="movesBox"><span id="movesNum"><img class="waveIco" id="waveIco" alt=""><span id="movesCount">0</span></span><span class="zone">waves left</span></div>
+  <div class="hudRow center"><div class="hudBox glass" id="goalsBox"></div></div>
+  <div class="hudRow">
+    <div class="hudBox glass" id="levelBox">
+      <img class="zoneEmblem" id="zoneEmblem" alt="">
+      <span class="lvCol"><span id="levelNum">Level 1</span><span class="zone" id="zoneName"></span></span>
+    </div>
+    <div class="hudBox glass" id="movesBox"><img class="waveIco" id="waveIco" alt=""><b id="movesCount">0</b><span class="zone">waves left</span></div>
+  </div>
   <div id="btns">
-    <button class="iconBtn" id="mapHudBtn" title="Adventure Map" aria-label="Open the adventure map"><img alt=""></button>
-    <button class="iconBtn" id="aquaBtn" title="My Aquarium" aria-label="Open my aquarium"><img alt=""></button>
-    <button class="iconBtn" id="muteBtn" title="Sound" aria-label="Turn sound on or off"><img alt=""></button>
-    <button class="iconBtn" id="retryBtn" title="Restart level" aria-label="Restart this level"><img alt=""></button>
+    <button class="iconBtn" id="mapHudBtn" title="Adventure Map" aria-label="Open the adventure map"><img alt=""><span>map</span></button>
+    <button class="iconBtn" id="aquaBtn" title="My Aquarium" aria-label="Open my aquarium"><img alt=""><span>aquarium</span></button>
+    <button class="iconBtn" id="muteBtn" title="Sound" aria-label="Turn sound on or off"><img alt=""><span>sound</span></button>
+    <button class="iconBtn" id="retryBtn" title="Restart level" aria-label="Restart this level"><img alt=""><span>restart</span></button>
   </div>
 </div>
 
@@ -529,7 +557,8 @@ function layout(){
   canvas.style.width = W + "px"; canvas.style.height = H + "px";
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   hudH = document.getElementById("hud").offsetHeight + 6;
-  cell = Math.min((W - 60) / COLS, (H - hudH - 66) / ROWS, 92);
+  // bottom reserve covers the labeled button bar
+  cell = Math.min((W - 60) / COLS, (H - hudH - 92) / ROWS, 92);
   boardX = (W - cell * COLS) / 2;
   boardY = hudH + (H - hudH - cell * ROWS) / 2 - 8;
   // toasts live in the open water between the HUD and the board panel
@@ -544,7 +573,7 @@ function cy(r){ return boardY + (r + 0.5) * cell; }
 /* ============================================================
    SPRITES — glass bubble tokens with the toy renders inside.
    ============================================================ */
-let sprites = {}, glows = {}, bubbleSprite = null, SPR = 0;
+let sprites = {}, glows = {}, bubbleSprite = null, cellSprite = null, SPR = 0;
 
 function rgba(hex, a){
   const n = parseInt(hex.slice(1), 16);
@@ -603,6 +632,24 @@ function bakeSprites(){
   b.strokeStyle = "rgba(255,255,255,0.75)"; b.lineWidth = 2; b.lineCap = "round";
   b.beginPath(); b.arc(0, 0, B * 0.78, -2.35, -1.65); b.stroke();
   bubbleSprite = bv;
+
+  // faint glass cell bubble drawn under every friend, so the board reads
+  // as a grid of bubbles (much quieter than Morgana's purple trap bubble)
+  const cellv = document.createElement("canvas");
+  cellv.width = cellv.height = Math.ceil(SPR * DPR);
+  const cb = cellv.getContext("2d");
+  cb.scale(DPR, DPR); cb.translate(SPR / 2, SPR / 2);
+  const CR = cell * 0.455;
+  const cg = cb.createRadialGradient(-CR * 0.3, -CR * 0.35, CR * 0.15, 0, 0, CR);
+  cg.addColorStop(0, "rgba(255,255,255,0.09)");
+  cg.addColorStop(0.8, "rgba(255,255,255,0.03)");
+  cg.addColorStop(1, "rgba(255,255,255,0.11)");
+  cb.fillStyle = cg;
+  cb.beginPath(); cb.arc(0, 0, CR, 0, TAU); cb.fill();
+  cb.strokeStyle = "rgba(255,255,255,0.30)"; cb.lineWidth = 1.5; cb.stroke();
+  cb.strokeStyle = "rgba(255,255,255,0.45)"; cb.lineWidth = 1.8; cb.lineCap = "round";
+  cb.beginPath(); cb.arc(0, 0, CR * 0.8, -2.3, -1.78); cb.stroke();
+  cellSprite = cellv;
 }
 
 /* ---------- frosted glass board panel ---------- */
@@ -695,16 +742,19 @@ function startLevel(){
 
 function updateHud(){
   $("levelNum").textContent = "Level " + level;
-  $("zoneName").innerHTML = zoneLabel(zone);
+  $("zoneEmblem").src = ASSETS[zone.icon];
+  $("zoneName").textContent = zone.name;
   movesBox.style.visibility = "";
   $("movesCount").textContent = moves;
   movesBox.classList.toggle("low", state !== "menu" && moves <= 5);
   goalsBox.innerHTML = goals.map((g, i) => {
     // the shown count lags the real one while collected friends fly home
     const shown = Math.max(g.left, Math.min(g.disp ?? g.left, g.total));
+    const got = g.total - shown;
     return `<span class="goalChip${shown <= 0 ? " done" : ""}" id="gc${i}">` +
       `<img src="${ASSETS[g.type.img]}" alt="${g.type.name}">` +
-      `<b class="goalNum">${shown <= 0 ? "✓" : shown}</b></span>`;
+      `<span class="gp"><b class="goalNum">${shown <= 0 ? "✓" : got + "/" + g.total}</b>` +
+      `<i class="gbar"><i style="width:${Math.round(got / g.total * 100)}%"></i></i></span></span>`;
   }).join("");
 }
 function bumpGoal(i){
@@ -847,7 +897,8 @@ function openMap(){
   state = "map";
   path = []; loopClosed = false; pointerPos = null; mapDragging = false; flyers = [];
   mapScroll = Math.min(mapMaxScroll(), Math.max(0, mapWorldY(progress) - H * 0.55));
-  $("levelNum").innerHTML = `<img class="zoneIco" src="${ASSETS.icoMap}" alt=""> Map`;
+  $("levelNum").textContent = "Map";
+  $("zoneEmblem").src = ASSETS.icoMap;
   $("zoneName").textContent = "tap a level!";
   goalsBox.innerHTML = "";
   movesBox.style.visibility = "hidden";
@@ -1518,8 +1569,11 @@ function landFlyer(f){
   if (g) g.disp = Math.max(g.left, (g.disp ?? g.left) - 1);
   const chip = $("gc" + f.gi);
   if (chip && g){
+    const got = g.total - Math.max(0, g.disp);
     const num = chip.querySelector(".goalNum");
-    if (num) num.textContent = g.disp <= 0 ? "✓" : g.disp;
+    if (num) num.textContent = g.disp <= 0 ? "✓" : got + "/" + g.total;
+    const bar = chip.querySelector(".gbar i");
+    if (bar) bar.style.width = Math.round(got / g.total * 100) + "%";
     chip.classList.toggle("done", g.disp <= 0);
     chip.classList.remove("pop"); void chip.offsetWidth; chip.classList.add("pop");
   }
@@ -1705,6 +1759,12 @@ function render(t){
       roundRectPath(frost.x, frost.y, frost.w, frost.h, FROST_R);
       ctx.stroke();
     }
+
+    // the grid itself: a glass cell bubble for every spot on the board
+    if (cellSprite)
+      for (let r = 0; r < ROWS; r++)
+        for (let c = 0; c < COLS; c++)
+          ctx.drawImage(cellSprite, cx(c) - SPR / 2, cy(r) - SPR / 2, SPR, SPR);
 
     // connection line: color glow, white casing, then a solid color core
     if (state === "drag" && path.length){
@@ -2067,7 +2127,8 @@ setHero(hero);
 // the first level actually started); the wave counter stays hidden until
 // there is actually a board to spend waves on
 $("levelNum").textContent = "Level " + level;
-$("zoneName").innerHTML = zoneLabel(zone);
+$("zoneEmblem").src = ASSETS[zone.icon];
+$("zoneName").textContent = zone.name;
 movesBox.style.visibility = "hidden";
 requestAnimationFrame(frame);
 
