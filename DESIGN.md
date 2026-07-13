@@ -37,8 +37,12 @@ confetti) and are part of each creature's identity — don't reassign them.
 
 - Top row: level pill left, wave counter right — **text only, no icons**;
   the pills stay quiet so the mission box is the loudest element.
-- **The mission box** (`#goalsDock`) is a pearl capsule docked directly
-  above the grid. Each goal is a **shell nest + tide tube**: the creature
+- **The mission box** (`#goalsDock`) is a sea-glass capsule docked
+  directly above the grid, and its glass is **tinted per zone**:
+  `zoneTint()` samples the scene painting's dominant hue (chroma-weighted
+  circular mean over a 24px thumbnail) and rebuilds the surface as
+  `hsla(hue, ~52%, 91%)` glass — rose in Coral Cove, deep blue in
+  Twilight — hue adapts, lightness never does, so ink text always reads. Each goal is a **shell nest + tide tube**: the creature
   sits in a pearly shell cradle, and a CSS glass tube grows out of it,
   filling with liquid in the creature's own `TYPES` color. Numbers stay
   big and always numeric (`9/15`, never a checkmark) — counting practice
