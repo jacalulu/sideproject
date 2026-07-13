@@ -71,7 +71,11 @@ the game:
 **Art & tech.** Painterly zone backgrounds, glowing painterly characters,
 an animated win screen (an 8-frame Nano Banana flipbook of your mermaid
 dancing), a looping background tune composed by Lyria (ducks under the
-narrated fun facts), and a liquid-glass UI (frosted board panel, glass
+narrated fun facts), pre-narrated fun facts — every host reads their own
+facts in their own voice (gpt-audio via OpenRouter: deep King Nerio,
+theatrical Maestro, shy Finn, velvet Morgana, bright mermaid; clips in
+`assets/facts/`, Web Speech API as the offline fallback), and a
+liquid-glass UI (frosted board panel, glass
 bubble tokens, glass HUD —
 plain CSS `backdrop-filter` + canvas, so it works on iPad Safari).
 Dialog cards sit on a light pearl surface with dark sea-ink text; one

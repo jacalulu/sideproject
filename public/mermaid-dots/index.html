@@ -276,11 +276,13 @@
      the HUD keeps its dark water glass */
   .card {
     border-radius:32px; padding:24px 28px 24px; max-width:360px; width:min(92vw,360px);
-    background:linear-gradient(168deg, rgba(255,255,255,0.80), rgba(199,233,245,0.62));
+    background:linear-gradient(168deg,
+      var(--cardTop, rgba(255,255,255,0.80)),
+      var(--cardBot, rgba(199,233,245,0.62)));
     border:1.5px solid rgba(255,255,255,0.75);
     box-shadow:0 12px 34px rgba(4,20,60,0.35),
       inset 0 1px 0 rgba(255,255,255,0.9),
-      inset 0 -22px 34px rgba(110,195,225,0.22);
+      inset 0 -22px 34px var(--tintGlow, rgba(110,195,225,0.22));
     color:var(--ink); text-shadow:none;
     display:flex; flex-direction:column; align-items:center; gap:12px;
     animation:cardIn .45s cubic-bezier(.2,1.5,.4,1);
@@ -332,7 +334,9 @@
   /* ---- pre-level fun fact card ---- */
   #factLevel { font-size:13px; color:var(--ink-soft); letter-spacing:.6px; }
   #factLevel img { width:17px; height:17px; vertical-align:-4px; }
-  #factImg { height:116px; }
+  #factImg { height:116px;
+    filter:drop-shadow(0 10px 18px rgba(0,20,60,.25))
+           drop-shadow(0 0 26px var(--tintGlow, rgba(110,195,225,.3))); }
   #factHost { font-size:17px; letter-spacing:.3px; }
   #factText { min-height:72px; display:block; line-height:1.65; }
   #factText .w { border-radius:6px; padding:1px 3px; margin:0 -3px; transition:background .12s, color .12s; }
@@ -422,8 +426,20 @@
     text-shadow:0 2px 16px rgba(6,26,58,.7), 0 1px 3px rgba(6,26,58,.55); }
   #winTop .stars img { width:54px; height:54px;
     filter:drop-shadow(0 0 14px rgba(255,209,102,.6)) drop-shadow(0 3px 6px rgba(0,20,60,.35)); }
-  #winBottom { display:flex; flex-direction:column; align-items:center; gap:10px; z-index:1; }
-  #winRescue { font-size:13.5px; color:#fff; text-shadow:0 1px 8px rgba(6,26,58,.65); }
+  #winBottom { display:flex; flex-direction:column; align-items:center; gap:12px; z-index:1; }
+  /* the rescued friends themselves, in a little water-glass pill */
+  #winRescue { display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:11px 20px 9px; border-radius:24px;
+    background:rgba(9,30,66,.40);
+    backdrop-filter:blur(12px) saturate(1.2); -webkit-backdrop-filter:blur(12px) saturate(1.2);
+    border:1px solid rgba(255,255,255,.30); }
+  .rIcons { display:flex; align-items:center; gap:5px; }
+  .rIcons img { width:38px; height:38px; object-fit:contain;
+    filter:drop-shadow(0 2px 5px rgba(0,20,60,.45)); }
+  .rIcons b { color:var(--gold); font-size:17px; margin:0 2px; }
+  .rIcons .rTank { width:30px; height:30px; margin-left:7px; opacity:.95; }
+  .rTxt { font-size:12.5px; color:rgba(255,255,255,.92); letter-spacing:.3px;
+    text-shadow:0 1px 4px rgba(6,26,58,.6); }
   .winRow { position:relative; display:flex; align-items:center; justify-content:center; min-height:244px; }
   .winRow::before {  /* radiant burst behind the dancing mermaid */
     content:""; position:absolute; width:250px; height:250px; border-radius:50%;
@@ -611,7 +627,7 @@ const names = { coral: "Ophelia", melia: "Jaclyn" };
 let rescued;
 try { rescued = JSON.parse(store.get("mermaidDots.rescued", "{}")); } catch(e){ rescued = {}; }
 if (!rescued || typeof rescued !== "object") rescued = {};
-let rescuedThisLevel = 0;
+let rescuedThisLevel = 0, rescuedTypes = [];   // who got saved this level (for the win screen)
 let starsByLevel;
 try { starsByLevel = JSON.parse(store.get("mermaidDots.stars", "{}")); } catch(e){ starsByLevel = {}; }
 if (!starsByLevel || typeof starsByLevel !== "object") starsByLevel = {};
@@ -686,9 +702,13 @@ function layout(){
   // for the labeled button bar at the bottom
   const dock = document.getElementById("goalsDock");
   const dockH = dock.classList.contains("off") ? 0 : dock.offsetHeight + 38;
-  cell = Math.min((W - 60) / COLS, (H - hudH - dockH - 96) / ROWS, 92);
+  const bottomBar = 96;   // labeled button bar
+  cell = Math.min((W - 60) / COLS, (H - hudH - dockH - bottomBar) / ROWS, 92);
   boardX = (W - cell * COLS) / 2;
-  boardY = hudH + dockH + (H - hudH - dockH - cell * ROWS) / 2 - 8;
+  // center the mission box + grid in the water between the HUD and the
+  // button bar (the bar used to be ignored, which sank everything low)
+  boardY = hudH + dockH +
+    Math.max(0, (H - hudH - dockH - bottomBar - cell * ROWS) / 2);
   // a real breath of water between the mission box and the board panel
   dock.style.top = Math.round(boardY - FROST_PAD - (dockH ? dock.offsetHeight : 0) - 30) + "px";
   // toasts live in the open water between the HUD and the mission box
@@ -852,9 +872,12 @@ function zoneTint(){
       X += Math.cos(rad) * chroma; Y += Math.sin(rad) * chroma;
     }
     const hue = Math.round(((Math.atan2(Y, X) * 180 / Math.PI) + 360) % 360);
-    dock.style.setProperty("--tintTop",  `hsla(${hue}, 52%, 91%, .62)`);
-    dock.style.setProperty("--tintBot",  `hsla(${hue}, 55%, 82%, .45)`);
-    dock.style.setProperty("--tintGlow", `hsla(${hue}, 60%, 68%, .22)`);
+    const bs = document.body.style;           // dock AND dialog cards inherit
+    bs.setProperty("--tintTop",  `hsla(${hue}, 52%, 91%, .62)`);
+    bs.setProperty("--tintBot",  `hsla(${hue}, 55%, 82%, .45)`);
+    bs.setProperty("--tintGlow", `hsla(${hue}, 60%, 68%, .22)`);
+    bs.setProperty("--cardTop",  `hsla(${hue}, 50%, 94%, .82)`);
+    bs.setProperty("--cardBot",  `hsla(${hue}, 52%, 87%, .62)`);
   } catch(e){}                                // tainted canvas etc: keep defaults
 }
 
@@ -893,7 +916,7 @@ function startLevel(){
   ensurePlayable();
 
   path = []; loopClosed = false; particles = []; rings = []; flyers = [];
-  rescuedThisLevel = 0;
+  rescuedThisLevel = 0; rescuedTypes = [];
   offGoalStreak = 0; squareToastShown = false; introPending = true; hintCells = null;
   state = "fall";
   updateHud();
@@ -1294,7 +1317,8 @@ const FACT_ORDER = (() => {
   return idx;
 })();
 
-let currentFact = null, lastFactLevel = 0;
+let currentFact = null, currentFactIdx = -1, lastFactLevel = 0;
+let factAudio = null;   // pre-narrated clip (one voice per host), TTS as fallback
 let currentUtter = null;   // held globally — Chrome kills speech if the utterance is GC'd
 let factPlaying = false, factDone = false;
 let wordTimer = null, safetyTimer = null;
@@ -1331,8 +1355,9 @@ function highlightAt(charIdx){
 }
 
 function showFact(){
-  const fact = FACTS[FACT_ORDER[(level - 1) % FACTS.length]];
-  currentFact = fact;
+  const idx = FACT_ORDER[(level - 1) % FACTS.length];
+  const fact = FACTS[idx];
+  currentFact = fact; currentFactIdx = idx;
   factPlaying = false; factDone = false;
   const host = HOSTS[fact.h];
   const img  = host.img ? ASSETS[host.img]
@@ -1387,41 +1412,60 @@ function playFact(){
   };
   const estMs = text.length / ttsCps * 1000;   // paced by this device's measured voice speed
 
-  let spoke = false, t0 = 0;
-  if ("speechSynthesis" in window){
-    try {
-      speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      currentUtter = u;
-      u.lang = "en-US"; u.rate = 0.9; u.pitch = 1.05;
-      u.onstart = () => { started = true; t0 = performance.now(); if (!gotBoundary) paced(estMs); };
-      u.onboundary = e => {
-        if (typeof e.charIndex === "number"){
-          gotBoundary = true;                // real word timings — use those
-          clearTimeout(wordTimer);
-          highlightAt(e.charIndex);
-        }
-      };
-      u.onend = () => {
-        if (started && !factDone){
-          const secs = (performance.now() - t0) / 1000;
-          if (secs > 1.5){   // calibrate: next fact paces at the voice's true speed
-            ttsCps = Math.min(25, Math.max(5, ttsCps * 0.4 + (text.length / secs) * 0.6));
-            store.set("mermaidDots.ttsCps", ttsCps.toFixed(2));
+  function speakFallback(){
+    let spoke = false, t0 = 0;
+    if ("speechSynthesis" in window){
+      try {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        currentUtter = u;
+        u.lang = "en-US"; u.rate = 0.9; u.pitch = 1.05;
+        u.onstart = () => { started = true; t0 = performance.now(); if (!gotBoundary) paced(estMs); };
+        u.onboundary = e => {
+          if (typeof e.charIndex === "number"){
+            gotBoundary = true;                // real word timings — use those
+            clearTimeout(wordTimer);
+            highlightAt(e.charIndex);
           }
-        }
-        finishFact(450);
-      };
-      // Chrome-on-Android swallows speak() fired in the same tick as cancel()
-      setTimeout(() => {
-        try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch(e){}
-      }, 80);
-      spoke = true;
-    } catch(e){}
+        };
+        u.onend = () => {
+          if (started && !factDone){
+            const secs = (performance.now() - t0) / 1000;
+            if (secs > 1.5){   // calibrate: next fact paces at the voice's true speed
+              ttsCps = Math.min(25, Math.max(5, ttsCps * 0.4 + (text.length / secs) * 0.6));
+              store.set("mermaidDots.ttsCps", ttsCps.toFixed(2));
+            }
+          }
+          finishFact(450);
+        };
+        // Chrome-on-Android swallows speak() fired in the same tick as cancel()
+        setTimeout(() => {
+          try { speechSynthesis.resume(); speechSynthesis.speak(u); } catch(e){}
+        }, 80);
+        spoke = true;
+      } catch(e){}
+    }
+    // no speech at all (unsupported, or it never started): highlight anyway
+    setTimeout(() => { if (factPlaying && !started && !gotBoundary) paced(estMs); }, spoke ? 1200 : 0);
   }
-  // no speech at all (unsupported, or it never started): highlight anyway
-  setTimeout(() => { if (factPlaying && !started && !gotBoundary) paced(estMs); }, spoke ? 1200 : 0);
-  safetyTimer = setTimeout(() => finishFact(0), 6000 + text.length * 140);
+
+  // each host has a pre-narrated clip in their own voice; the device's
+  // speech synthesis remains the offline / file:// fallback
+  if (CAN_MEDIA && currentFactIdx >= 0){
+    const a = new Audio("assets/facts/fact-" + currentFactIdx + ".mp3");
+    factAudio = a;
+    a.addEventListener("playing", () => {
+      started = true;
+      const ms = isFinite(a.duration) && a.duration > 1 ? a.duration * 1000 - 350 : estMs;
+      paced(Math.max(1500, ms));
+    }, { once: true });
+    a.onended = () => finishFact(350);
+    a.onerror = () => { factAudio = null; speakFallback(); };
+    a.play().catch(() => { factAudio = null; speakFallback(); });
+  } else {
+    speakFallback();
+  }
+  safetyTimer = setTimeout(() => finishFact(0), 8000 + text.length * 160);
 }
 
 function finishFact(delay){
@@ -1429,6 +1473,7 @@ function finishFact(delay){
   factDone = true; factPlaying = false;
   clearTimeout(wordTimer); clearTimeout(safetyTimer);
   setTimeout(() => {
+    if (factAudio){ factAudio.pause(); factAudio = null; }
     hushed();
     duckMusic(false);
     $("factOverlay").classList.add("hidden");
@@ -1598,6 +1643,7 @@ function clearPath(){
     spawnHearts(cx(p.c), y - cell * 0.25);
     rescued[type.key] = (rescued[type.key] || 0) + 1;
     rescuedThisLevel++;
+    rescuedTypes.push(type);
     grid[p.r][p.c] = null;
   }
   if (rescues.length){
@@ -1809,9 +1855,14 @@ function afterSettle(){
     if (zoneDone){ stopWinAnim(); stopWinVid(); $("winImg").src = ASSETS.kingNerio; }
     else { startWinAnim(); startWinVid(); }
     const wr = $("winRescue");
-    wr.style.display = rescuedThisLevel > 0 ? "" : "none";
-    wr.textContent = "You rescued " + rescuedThisLevel +
-      (rescuedThisLevel === 1 ? " friend" : " friends") + " for your aquarium!";
+    if (rescuedThisLevel > 0){    // show WHO was saved, swimming into the tank
+      wr.style.display = "";
+      wr.innerHTML = `<span class="rIcons">` +
+        rescuedTypes.slice(0, 6).map(t => `<img src="${ASSETS[t.img]}" alt="${t.name}">`).join("") +
+        (rescuedTypes.length > 6 ? `<b>+${rescuedTypes.length - 6}</b>` : "") +
+        `<img class="rTank" src="${ASSETS.btnAqua}" alt=""></span>` +
+        `<span class="rTxt">${rescuedThisLevel === 1 ? "1 friend" : rescuedThisLevel + " friends"} rescued for your aquarium!</span>`;
+    } else wr.style.display = "none";
     setTimeout(() => {
       $("winOverlay").classList.remove("hidden");
       $("btns").classList.add("menuHide");   // celebration owns the screen —
@@ -2409,6 +2460,7 @@ checkBuild();
 document.addEventListener("visibilitychange", () => {
   if (document.hidden){            // screen off / app backgrounded: go quiet
     if (music) music.pause();
+    if (factAudio) factAudio.pause();
     hushed();
     return;
   }
