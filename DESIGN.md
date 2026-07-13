@@ -38,10 +38,16 @@ confetti) and are part of each creature's identity — don't reassign them.
 - Top row: level pill left, wave counter right — **text only, no icons**;
   the pills stay quiet so the mission box is the loudest element.
 - **The mission box** (`#goalsDock`) is a pearl capsule docked directly
-  above the grid: big creature portraits, `collected/total` counts,
-  progress bars. It IS the tutorial — no instructional text anywhere
-  (the target player can't read). It bounces at level start, wiggles
-  gold on every catch, and bursts when a goal completes.
+  above the grid. Each goal is a **shell nest + tide tube**: the creature
+  sits in a pearly shell cradle, and a CSS glass tube grows out of it,
+  filling with liquid in the creature's own `TYPES` color. Numbers stay
+  big and always numeric (`9/15`, never a checkmark) — counting practice
+  is a design goal. It IS the tutorial — no instructional text anywhere.
+  At level start the nests rock awake; on every catch the friend flies
+  into its shell, the shell gulps, and the tide sloshes up; on completion
+  the tube flashes gold and a star caps its end.
+- Three goals: the units compact and wrap 2-over-1 (`.g3`; `mode-row`
+  and `mode-stack` alternates exist behind classes).
 - Bottom bar: four glass chips with lowercase labels, centered.
 - Radii scale: pills `999`, cards `32`, capsule `26`, tiles/HUD `22`,
   progress bars `4`.
