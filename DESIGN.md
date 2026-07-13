@@ -9,7 +9,7 @@ sea glass, the stickers are candy.**
 | Layer | What it's for | Treatment |
 |---|---|---|
 | **World** | Zone backgrounds, splash keyart, the named cast | Painterly, bioluminescent, dimensional (original Nano Banana art). Never flattened. |
-| **Sea glass** | Everything the player touches: HUD pills, dialog cards, button chips, board frost | Translucent glass with `backdrop-filter` blur. Dark water glass for HUD (white text), pale pearl glass for dialog cards (dark ink text). CSS-drawn, never baked into images. |
+| **Sea glass** | Everything the player touches: HUD pills, dialog cards, button chips, board frost | Translucent glass with `backdrop-filter` blur. Dark water glass for HUD (white text), pale pearl glass for dialog cards (dark ink text). CSS-drawn, never baked into images. **Bubbles are gameplay, not decoration**: the only bubble on the board is Morgana's trap bubble — bubble always means "friend to rescue". |
 | **Candy stickers** | All generated icons and board pieces | Chunky, rounded, simplified shapes; soft gradients; one crisp glossy highlight; thin soft white sticker outline with a gentle glow. Generated from one master style (see §5). |
 
 ## 2. Color tokens (`:root` in index.html)

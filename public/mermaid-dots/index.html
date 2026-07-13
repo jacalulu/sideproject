@@ -723,7 +723,7 @@ function cy(r){ return boardY + (r + 0.5) * cell; }
 /* ============================================================
    SPRITES — glass bubble tokens with the toy renders inside.
    ============================================================ */
-let sprites = {}, glows = {}, bubbleSprite = null, cellSprite = null, SPR = 0;
+let sprites = {}, glows = {}, bubbleSprite = null, SPR = 0;
 
 function rgba(hex, a){
   const n = parseInt(hex.slice(1), 16);
@@ -782,24 +782,6 @@ function bakeSprites(){
   b.strokeStyle = "rgba(255,255,255,0.75)"; b.lineWidth = 2; b.lineCap = "round";
   b.beginPath(); b.arc(0, 0, B * 0.78, -2.35, -1.65); b.stroke();
   bubbleSprite = bv;
-
-  // faint glass cell bubble drawn under every friend, so the board reads
-  // as a grid of bubbles (much quieter than Morgana's purple trap bubble)
-  const cellv = document.createElement("canvas");
-  cellv.width = cellv.height = Math.ceil(SPR * DPR);
-  const cb = cellv.getContext("2d");
-  cb.scale(DPR, DPR); cb.translate(SPR / 2, SPR / 2);
-  const CR = cell * 0.455;
-  const cg = cb.createRadialGradient(-CR * 0.3, -CR * 0.35, CR * 0.15, 0, 0, CR);
-  cg.addColorStop(0, "rgba(255,255,255,0.09)");
-  cg.addColorStop(0.8, "rgba(255,255,255,0.03)");
-  cg.addColorStop(1, "rgba(255,255,255,0.11)");
-  cb.fillStyle = cg;
-  cb.beginPath(); cb.arc(0, 0, CR, 0, TAU); cb.fill();
-  cb.strokeStyle = "rgba(255,255,255,0.30)"; cb.lineWidth = 1.5; cb.stroke();
-  cb.strokeStyle = "rgba(255,255,255,0.45)"; cb.lineWidth = 1.8; cb.lineCap = "round";
-  cb.beginPath(); cb.arc(0, 0, CR * 0.8, -2.3, -1.78); cb.stroke();
-  cellSprite = cellv;
 }
 
 /* ---------- frosted glass board panel ---------- */
@@ -1306,6 +1288,10 @@ const FACTS = [
   { h:"mermaid", t:"Seagrass meadows are underwater fields where baby seahorses hide from the current." },
 ];
 
+// measured speech bounds [start,end] seconds per narration clip,
+// so the karaoke highlight tracks the actual voice
+const FACT_TIMES = {"0":[0.08,8.38],"1":[0.1,6.32],"2":[0.06,13.18],"3":[0.06,7.74],"4":[0.16,4.6],"5":[0.06,9.84],"6":[0.54,7.14],"7":[0.06,4.14],"8":[0.08,6.88],"9":[0.08,5.82],"10":[0.1,5.32],"11":[0.08,6.26],"12":[0.06,8.7],"13":[0.24,6.28],"14":[0.08,4.32],"15":[0.06,7.28],"16":[0.24,14.18],"17":[0.12,5.84],"18":[0.06,6.02],"19":[0.06,5.66],"20":[0.06,5.82],"21":[0.16,7.36],"22":[0.04,8.12],"23":[0.54,7.84],"24":[0.06,9.14],"25":[0.06,6.06],"26":[0.04,9.68],"27":[0.04,9.4],"28":[0.04,7.12],"29":[0.04,8.04],"30":[0.08,18.54],"31":[0.06,16.24],"32":[0.06,6.68],"33":[0.08,6.36],"34":[0.04,6.58],"35":[0.08,7.22],"36":[0.06,6.56],"37":[0.08,9.0],"38":[0.08,12.66],"39":[0.1,10.14],"40":[0.14,7.82],"41":[0.06,7.56],"42":[0.08,12.7],"43":[0.24,6.58],"44":[0.06,7.72],"45":[0.08,9.14],"46":[0.06,7.66],"47":[0.06,6.18],"48":[0.06,5.1],"49":[0.06,8.66],"50":[0.04,7.7],"51":[0.2,7.38],"52":[0.06,6.46],"53":[0.06,5.56],"54":[0.04,6.14]};
+
 /* every fact appears once (in a seeded shuffled order) before any repeat */
 const FACT_ORDER = (() => {
   const idx = FACTS.map((_, i) => i);
@@ -1454,11 +1440,25 @@ function playFact(){
   if (CAN_MEDIA && currentFactIdx >= 0){
     const a = new Audio("assets/facts/fact-" + currentFactIdx + ".mp3");
     factAudio = a;
-    a.addEventListener("playing", () => {
-      started = true;
-      const ms = isFinite(a.duration) && a.duration > 1 ? a.duration * 1000 - 350 : estMs;
-      paced(Math.max(1500, ms));
-    }, { once: true });
+    // highlight follows the audio clock, mapped through this clip's
+    // measured speech bounds — words weighted by length, so the karaoke
+    // stays glued to the voice even if playback stalls or resumes
+    const weights = words.map(w => w.textContent.length + 1.5);
+    const total = weights.reduce((s, w) => s + w, 0);
+    const startsAt = []; let acc = 0;
+    for (const w of weights){ startsAt.push(acc / total); acc += w; }
+    const bounds = (typeof FACT_TIMES !== "undefined" && FACT_TIMES[currentFactIdx]) || null;
+    const tick = () => {
+      if (!factPlaying || factAudio !== a) return;
+      const s = bounds ? bounds[0] : 0.12;
+      const e = bounds ? bounds[1] : (isFinite(a.duration) ? a.duration - 0.4 : s + estMs / 1000);
+      const frac = Math.max(0, Math.min(1, (a.currentTime - s) / Math.max(0.5, e - s)));
+      let i = -1;
+      while (i + 1 < startsAt.length && frac >= startsAt[i + 1]) i++;
+      if (frac > 0) setWordOn(words[Math.max(0, i)]);
+      requestAnimationFrame(tick);
+    };
+    a.addEventListener("playing", () => { started = true; requestAnimationFrame(tick); }, { once: true });
     a.onended = () => finishFact(350);
     a.onerror = () => { factAudio = null; speakFallback(); };
     a.play().catch(() => { factAudio = null; speakFallback(); });
@@ -2004,12 +2004,6 @@ function render(t){
       roundRectPath(frost.x, frost.y, frost.w, frost.h, FROST_R);
       ctx.stroke();
     }
-
-    // the grid itself: a glass cell bubble for every spot on the board
-    if (cellSprite)
-      for (let r = 0; r < ROWS; r++)
-        for (let c = 0; c < COLS; c++)
-          ctx.drawImage(cellSprite, cx(c) - SPR / 2, cy(r) - SPR / 2, SPR, SPR);
 
     // connection line: color glow, white casing, then a solid color core
     if (state === "drag" && path.length){
