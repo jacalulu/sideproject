@@ -35,13 +35,20 @@ confetti) and are part of each creature's identity — don't reassign them.
 
 ## 4. Layout & spacing
 
-- HUD is two rows: goals capsule centered on top; level pill (zone emblem
-  badge + stacked text) left, one-line wave counter right.
+- Top row: level pill left, wave counter right — **text only, no icons**;
+  the pills stay quiet so the mission box is the loudest element.
+- **The mission box** (`#goalsDock`) is a pearl capsule docked directly
+  above the grid: big creature portraits, `collected/total` counts,
+  progress bars. It IS the tutorial — no instructional text anywhere
+  (the target player can't read). It bounces at level start, wiggles
+  gold on every catch, and bursts when a goal completes.
 - Bottom bar: four glass chips with lowercase labels, centered.
-- Radii scale: pills `999`, cards `32`, tiles/HUD `22`, progress bars `3`.
+- Radii scale: pills `999`, cards `32`, capsule `26`, tiles/HUD `22`,
+  progress bars `4`.
 - The title screen shows **no chrome** — HUD and button bar appear after Play.
 - Dialogs own the screen: HUD sits below the overlay backdrop (z 9 vs z 10)
   and dims; only the button bar stays above (z 12).
+- Zone emblems appear on the map chips and the fact card, not in the HUD.
 
 ## 5. Generated art pipeline (sticker sheets)
 
@@ -72,8 +79,11 @@ bubbles, and glass are drawn in CSS/canvas, never baked into the art.
 
 ## 7. Iconography rules
 
-- No emoji in chrome. Emoji are allowed only inside playful toast copy.
+- No emoji in chrome, and no emoji as pointers/instructions. Emoji are
+  allowed only inside short celebratory toast copy (LOOP!, SPLASH!).
 - Every icon exists as `assets/ico-*.webp` (UI), `assets/zone-*.webp`
-  (zone emblems), or `assets/btn-*.webp` (button/HUD stickers).
-- Zone emblems appear at three sizes: HUD badge (30px), map chip (~r·0.8),
-  fact-card line (17px).
+  (zone emblems), or `assets/btn-*.webp` (flat button stickers — the
+  button body is always a CSS glass chip, never baked into the art).
+- Prefer showing over telling: anything a pre-reader must understand is
+  communicated with motion and pictures (mission box bounce, friends
+  flying to their goal chip), never with text.
