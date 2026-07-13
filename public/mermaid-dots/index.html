@@ -90,10 +90,16 @@
   #goalsDock { position:absolute; left:0; right:0; z-index:9;
     display:flex; justify-content:center; padding:0 12px; pointer-events:none; }
   #goalsDock.off { display:none; }
-  #goalsBox { gap:20px; padding:9px 24px; border-radius:26px;
-    background:linear-gradient(170deg, rgba(255,255,255,.90), rgba(213,240,248,.74));
-    border:1.5px solid rgba(255,255,255,.85);
-    box-shadow:0 8px 22px rgba(4,20,60,.32), inset 0 1px 0 rgba(255,255,255,.9);
+  /* pale sea glass, not solid white — the water glows through it like the
+     dialog cards; the shells and tubes carry the contrast */
+  #goalsBox { gap:20px; padding:9px 22px; border-radius:999px;
+    background:linear-gradient(170deg, rgba(255,255,255,.60), rgba(199,233,245,.42));
+    backdrop-filter:blur(14px) saturate(1.25);
+    -webkit-backdrop-filter:blur(14px) saturate(1.25);
+    border:1.5px solid rgba(255,255,255,.7);
+    box-shadow:0 6px 18px rgba(4,20,60,.22),
+      inset 0 1px 0 rgba(255,255,255,.8),
+      inset 0 -12px 20px rgba(110,195,225,.16);
     color:var(--ink); text-shadow:none; }
   /* one goal = shell nest (the creature's home) + tide tube (liquid
      progress in the creature's own color) + big numerals for counting */
@@ -155,15 +161,16 @@
   #goalsBox.remind .nest { animation:nestRock .7s ease-in-out 3; }
   #goalsBox.remind .buddy { filter:drop-shadow(0 0 12px rgba(255,209,102,.95)); }
 
-  /* three goals: tubes compact and the row wraps 2-over-1 (default);
-     alt modes kept for tuning — row: one tight line, stack: full-width rows */
-  #goalsBox.g3 { flex-wrap:wrap; justify-content:center; gap:6px 14px; padding:8px 18px; --tw:84px; }
-  #goalsBox.g3 .nest { width:48px; height:48px; }
-  #goalsBox.g3 .buddy { width:29px; height:29px; }
+  /* three goals: one row (default), tubes compact, numbers as big as the
+     width allows; wrap and stack alternates kept behind classes for tuning */
+  #goalsBox.g3 { flex-wrap:wrap; justify-content:center; gap:6px 14px; padding:8px 16px; --tw:84px; }
+  #goalsBox.g3 .nest { width:46px; height:46px; }
+  #goalsBox.g3 .buddy { width:28px; height:28px; }
   #goalsBox.g3 .goalNum { font-size:15px; right:9px; }
-  #goalsBox.g3.mode-row { flex-wrap:nowrap; gap:10px; --tw:62px; }
-  #goalsBox.g3.mode-row .goalNum { font-size:13.5px; right:7px; }
-  #goalsBox.g3.mode-stack { flex-direction:column; align-items:stretch; gap:7px; --tw:148px; }
+  #goalsBox.g3.mode-row { flex-wrap:nowrap; gap:8px; --tw:68px; }
+  #goalsBox.g3.mode-row .goalNum { font-size:14.5px; right:7px; }
+  #goalsBox.g3.mode-stack { flex-direction:column; align-items:stretch; gap:7px;
+    --tw:148px; border-radius:26px; }
   #goalsBox.g3.mode-stack .goalChip { justify-content:flex-start; }
   /* labeled bottom bar, centered — map · aquarium · sound · restart.
      the button body is a CSS sea-glass chip (same material family as the
@@ -196,11 +203,13 @@
     #hud { gap:5px; padding:8px 8px; }
     .hudBox { padding:5px 9px; font-size:14.5px; gap:7px; border-radius:16px; }
     #levelBox { padding:4px 10px; }
-    #goalsBox { gap:12px; padding:7px 16px; --tw:88px; }
+    #goalsBox { gap:12px; padding:7px 14px; --tw:88px; }
     .nest { width:48px; height:48px; }
     .buddy { width:29px; height:29px; }
     .goalNum { font-size:15px; right:9px; }
     #goalsBox.g3 { --tw:72px; }
+    #goalsBox.g3.mode-row { --tw:62px; gap:6px; }
+    #goalsBox.g3.mode-row .goalNum { font-size:13.5px; right:6px; }
     #goalsBox.g3.mode-stack { --tw:124px; }
     .iconBtn .chip { width:48px; height:48px; }
     .iconBtn img { width:27px; height:27px; }
@@ -661,11 +670,12 @@ function layout(){
   // the mission box docks right above the grid; reserve room for it and
   // for the labeled button bar at the bottom
   const dock = document.getElementById("goalsDock");
-  const dockH = dock.classList.contains("off") ? 0 : dock.offsetHeight + 10;
+  const dockH = dock.classList.contains("off") ? 0 : dock.offsetHeight + 22;
   cell = Math.min((W - 60) / COLS, (H - hudH - dockH - 96) / ROWS, 92);
   boardX = (W - cell * COLS) / 2;
   boardY = hudH + dockH + (H - hudH - dockH - cell * ROWS) / 2 - 8;
-  dock.style.top = Math.round(boardY - FROST_PAD - (dockH ? dock.offsetHeight : 0) - 8) + "px";
+  // a real breath of water between the mission box and the board panel
+  dock.style.top = Math.round(boardY - FROST_PAD - (dockH ? dock.offsetHeight : 0) - 18) + "px";
   // toasts live in the open water between the HUD and the mission box
   toastEl.style.top = Math.round((hudH + boardY - FROST_PAD - dockH) / 2) + "px";
   if (assetsReady){ bakeSprites(); makeFrost(); }
@@ -852,7 +862,8 @@ function updateHud(){
   $("movesCount").textContent = moves;
   movesBox.classList.toggle("low", state !== "menu" && moves <= 5);
   $("goalsDock").classList.remove("off");
-  goalsBox.classList.toggle("g3", goals.length >= 3);   // + mode-row / mode-stack alts
+  goalsBox.classList.toggle("g3", goals.length >= 3);      // single row by default;
+  goalsBox.classList.toggle("mode-row", goals.length >= 3); // mode-stack kept as alt
   goalsBox.innerHTML = goals.map((g, i) => {
     // the shown count lags the real one while collected friends fly home
     const shown = Math.max(g.left, Math.min(g.disp ?? g.left, g.total));
