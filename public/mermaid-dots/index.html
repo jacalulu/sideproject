@@ -277,8 +277,8 @@
   .card {
     border-radius:32px; padding:24px 28px 24px; max-width:360px; width:min(92vw,360px);
     background:linear-gradient(168deg,
-      var(--cardTop, rgba(255,255,255,0.80)),
-      var(--cardBot, rgba(199,233,245,0.62)));
+      var(--cardTop, rgba(233,247,250,0.70)),
+      var(--cardBot, rgba(186,228,242,0.52)));
     border:1.5px solid rgba(255,255,255,0.75);
     box-shadow:0 12px 34px rgba(4,20,60,0.35),
       inset 0 1px 0 rgba(255,255,255,0.9),
@@ -858,8 +858,8 @@ function zoneTint(){
     bs.setProperty("--tintTop",  `hsla(${hue}, 52%, 91%, .62)`);
     bs.setProperty("--tintBot",  `hsla(${hue}, 55%, 82%, .45)`);
     bs.setProperty("--tintGlow", `hsla(${hue}, 60%, 68%, .22)`);
-    bs.setProperty("--cardTop",  `hsla(${hue}, 50%, 94%, .82)`);
-    bs.setProperty("--cardBot",  `hsla(${hue}, 52%, 87%, .62)`);
+    bs.setProperty("--cardTop",  `hsla(${hue}, 55%, 91%, .70)`);
+    bs.setProperty("--cardBot",  `hsla(${hue}, 58%, 82%, .52)`);
   } catch(e){}                                // tainted canvas etc: keep defaults
 }
 
@@ -2466,6 +2466,7 @@ window.addEventListener("pagehide", () => { if (music) music.pause(); });
 loadAll.then(() => {
   assetsReady = true;
   layout();
+  zoneTint();   // the start card wears the current zone's glass from boot
   $("logoImg").src = ASSETS.logo;
   $("pickCoral").querySelector("img").src = ASSETS.coralHero;
   $("pickMelia").querySelector("img").src = ASSETS.meliaHero;
