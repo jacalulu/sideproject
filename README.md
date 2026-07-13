@@ -38,8 +38,9 @@ Actions tab. Each run uploads a new TestFlight build.
 - Drag a line between 2 or more matching sea friends to collect them.
 - Close a **loop** (like a square) to splash away every friend of that kind!
 - Collect the friends shown at the top before the wave counter 🌊 runs out.
-- From level 8, some friends are trapped in bubbles — clear next to a bubble
-  to pop it and set them free.
+- From level 8, some friends are trapped in bubbles — swipe a bubbled friend
+  as part of your matching line to pop it free (a loop rescues every bubbled
+  friend of that kind on the board). Rescued friends swim to your aquarium.
 - Run out of waves? Just try again — no penalty, ever.
 
 **Infinite levels.** Levels are generated from a seeded difficulty curve, so
@@ -63,7 +64,8 @@ the game:
 - **Ophelia** and **Jaclyn** — pick your mermaid on the start screen; she
   cheers when you win (with **Maestro** the lobster conductor).
 - **Finn** the worried little fish encourages you on the try-again screen.
-- **Morgana** the sea witch is why friends are bubble-trapped from level 8.
+- **Morgana** the sea witch is why friends are bubble-trapped from level 8;
+  swipe them into a matching line to rescue them into your aquarium.
 - **King Nerio** congratulates you when you finish each 10-level zone.
 
 **Art & tech.** Painterly zone backgrounds, glowing painterly characters,

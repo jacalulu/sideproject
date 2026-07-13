@@ -532,7 +532,7 @@
   <div class="card glass">
     <img class="chara heroImg" id="storyImg" alt="Morgana">
     <h2>Uh oh… Morgana!</h2>
-    <p>The sneaky sea witch trapped some friends inside magic bubbles! <b>Clear treasures right next to a bubble</b> to pop it and set them free.</p>
+    <p>The sneaky sea witch trapped some friends inside magic bubbles! <b>Swipe a bubbled friend into your line</b> to pop it free — rescued friends swim to your aquarium.</p>
     <button class="btn" id="storyBtn">We'll save them! <img class="btnIco" id="storyIco" alt=""></button>
   </div>
 </div>
@@ -670,12 +670,12 @@ function layout(){
   // the mission box docks right above the grid; reserve room for it and
   // for the labeled button bar at the bottom
   const dock = document.getElementById("goalsDock");
-  const dockH = dock.classList.contains("off") ? 0 : dock.offsetHeight + 22;
+  const dockH = dock.classList.contains("off") ? 0 : dock.offsetHeight + 38;
   cell = Math.min((W - 60) / COLS, (H - hudH - dockH - 96) / ROWS, 92);
   boardX = (W - cell * COLS) / 2;
   boardY = hudH + dockH + (H - hudH - dockH - cell * ROWS) / 2 - 8;
   // a real breath of water between the mission box and the board panel
-  dock.style.top = Math.round(boardY - FROST_PAD - (dockH ? dock.offsetHeight : 0) - 18) + "px";
+  dock.style.top = Math.round(boardY - FROST_PAD - (dockH ? dock.offsetHeight : 0) - 30) + "px";
   // toasts live in the open water between the HUD and the mission box
   toastEl.style.top = Math.round((hudH + boardY - FROST_PAD - dockH) / 2) + "px";
   if (assetsReady){ bakeSprites(); makeFrost(); }
@@ -1417,13 +1417,8 @@ canvas.addEventListener("pointerdown", e => {
   if (state !== "idle") return;
   const p = cellFromPoint(e.clientX, e.clientY, 0.48);
   if (!p || !grid[p.r][p.c]) return;
-  if (grid[p.r][p.c].trapped){
-    // a gentle boing — the friend is stuck in Morgana's bubble
-    grid[p.r][p.c].wiggle = 0.7;
-    tone(290, 0.1, "sine", 0.14);
-    setTimeout(() => tone(240, 0.14, "sine", 0.1), 90);
-    return;
-  }
+  // bubbled friends are fully swipeable — including them in a line is
+  // exactly how you rescue them (they pop free into the aquarium)
   canvas.setPointerCapture(e.pointerId);
   path = [p]; loopClosed = false;
   pointerPos = { x: e.clientX, y: e.clientY };
@@ -1453,7 +1448,7 @@ canvas.addEventListener("pointermove", e => {
   if (loopClosed) return;
   const type = grid[path[0].r][path[0].c].type;
   const dot = grid[p.r][p.c];
-  if (!dot || dot.trapped || dot.type !== type || !adjacent(p, last)) return;
+  if (!dot || dot.type !== type || !adjacent(p, last)) return;
   if (inPath(p)){
     if (path.length >= 3){
       path.push(p);
@@ -1518,11 +1513,15 @@ canvas.addEventListener("pointercancel", () => {
 /* ---------- game flow ---------- */
 function clearPath(){
   const type = grid[path[0].r][path[0].c].type;
-  const targets = [];
+  const targets = [];   // free friends — collected toward the goals
+  const rescues = [];   // bubbled friends — popped free, off to the aquarium
+  const sort = p => (grid[p.r][p.c].trapped ? rescues : targets).push(p);
   if (loopClosed){
+    // a loop splashes every free friend of this kind AND rescues every
+    // bubbled one, anywhere on the board
     for (let r = 0; r < ROWS; r++)
       for (let c = 0; c < COLS; c++)
-        if (grid[r][c] && grid[r][c].type === type && !grid[r][c].trapped) targets.push({ r, c });
+        if (grid[r][c] && grid[r][c].type === type) sort({ r, c });
     toast("SPLASH! 🌊");
     splashSound();
     rings.push({ x: cx(path[0].c), y: cy(path[0].r), r: cell * 0.4, max: cell * COLS, t: 0, color: type.main });
@@ -1530,36 +1529,29 @@ function clearPath(){
     const seen = new Set();
     for (const p of path){
       const k = p.r + "," + p.c;
-      if (!seen.has(k)){ seen.add(k); targets.push(p); }
+      if (!seen.has(k)){ seen.add(k); sort(p); }
     }
   }
   const origins = targets.map(p => ({ x: cx(p.c), y: cy(p.r) + grid[p.r][p.c].yOff }));
+  const rescueOrigins = rescues.map(p => ({ x: cx(p.c), y: cy(p.r) + grid[p.r][p.c].yOff }));
   for (const p of targets){
     burst(cx(p.c), cy(p.r) + grid[p.r][p.c].yOff, type);
     rings.push({ x: cx(p.c), y: cy(p.r), r: cell * 0.3, max: cell * 0.75, t: 0, color: type.main });
     grid[p.r][p.c] = null;
   }
-  let popped = 0;
-  for (const p of targets)
-    for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
-      const r = p.r + dr, c = p.c + dc;
-      if (r < 0 || r >= ROWS || c < 0 || c >= COLS) continue;
-      const d = grid[r][c];
-      if (d && d.trapped){
-        d.trapped = false; popped++;
-        d.wiggle = 1;
-        rescued[d.type.key] = (rescued[d.type.key] || 0) + 1;
-        rescuedThisLevel++;
-        rings.push({ x: cx(c), y: cy(r), r: cell * 0.35, max: cell * 0.9, t: 0, color: "#e0ccff" });
-        burstBubbles(cx(c), cy(r));
-        spawnHearts(cx(c), cy(r) - cell * 0.25);
-      }
-    }
-  if (popped){
+  for (const p of rescues){
+    const y = cy(p.r) + grid[p.r][p.c].yOff;
+    rings.push({ x: cx(p.c), y: cy(p.r), r: cell * 0.35, max: cell * 0.9, t: 0, color: "#e0ccff" });
+    burstBubbles(cx(p.c), y);
+    spawnHearts(cx(p.c), y - cell * 0.25);
+    rescued[type.key] = (rescued[type.key] || 0) + 1;
+    rescuedThisLevel++;
+    grid[p.r][p.c] = null;
+  }
+  if (rescues.length){
     setTimeout(bubblePopSound, 120);
     store.set("mermaidDots.rescued", JSON.stringify(rescued));
-    const ab = $("aquaBtn");
-    ab.classList.remove("pulse"); void ab.offsetWidth; ab.classList.add("pulse");
+    spawnRescueFlyers(rescueOrigins, type);
   }
 
   const gi = goals.findIndex(g => g.type.key === type.key);
@@ -1571,7 +1563,7 @@ function clearPath(){
     if (collected > 0) spawnFlyers(origins.slice(0, collected), type, gi);
   }
   // two moves in a row that didn't help the goals: point back at the chips
-  if (collected > 0 || popped) offGoalStreak = 0;
+  if (collected > 0 || rescues.length) offGoalStreak = 0;
   else if (++offGoalStreak >= 2){
     offGoalStreak = 0;
     remindGoals();
@@ -1618,8 +1610,8 @@ function findSquares(){
   for (let r = 0; r + 1 < ROWS; r++)
     for (let c = 0; c + 1 < COLS; c++){
       const d = grid[r][c];
-      if (!d || d.trapped) continue;
-      const ok = p => p && !p.trapped && p.type === d.type;
+      if (!d) continue;
+      const ok = p => p && p.type === d.type;
       if (ok(grid[r][c+1]) && ok(grid[r+1][c+1]) && ok(grid[r+1][c]))
         out.push({ key: d.type.key,
                    cells: [{r, c}, {r, c: c+1}, {r: r+1, c: c+1}, {r: r+1, c}] });
@@ -1634,7 +1626,7 @@ function findGroup(keys){
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++){
       const d = grid[r][c];
-      if (!d || d.trapped || seen.has(r + "," + c)) continue;
+      if (!d || seen.has(r + "," + c)) continue;
       if (keys && !keys.has(d.type.key)) continue;
       const comp = [], stack = [{r, c}];
       seen.add(r + "," + c);
@@ -1645,7 +1637,7 @@ function findGroup(keys){
           const rr = p.r + dr, cc = p.c + dc, k = rr + "," + cc;
           if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS || seen.has(k)) continue;
           const q = grid[rr][cc];
-          if (q && !q.trapped && q.type === d.type){ seen.add(k); stack.push({ r: rr, c: cc }); }
+          if (q && q.type === d.type){ seen.add(k); stack.push({ r: rr, c: cc }); }
         }
       }
       if (comp.length >= 2 && (!best || comp.length > best.length)) best = comp;
@@ -1685,7 +1677,28 @@ function spawnFlyers(origins, type, gi){
                   bend: (Math.random() - 0.5) * cell * 2 });
   });
 }
+/* rescued friends swim down into the aquarium button — the mechanic
+   explains itself: pop a bubble, watch the friend join your tank */
+function spawnRescueFlyers(origins, type){
+  const ab = $("aquaBtn");
+  const pulse = () => { ab.classList.remove("pulse"); void ab.offsetWidth; ab.classList.add("pulse"); };
+  if (REDUCED){ pulse(); return; }
+  const rect = ab.getBoundingClientRect();
+  const tx = rect.left + rect.width / 2, ty = rect.top + rect.height / 2;
+  origins.forEach((o, i) => {
+    flyers.push({ x0: o.x, y0: o.y, tx, ty, aqua: true, key: type.key,
+                  t: -i * 0.09, dur: 0.6 + Math.random() * 0.15,
+                  bend: (Math.random() - 0.5) * cell * 2.5 });
+  });
+}
+
 function landFlyer(f){
+  if (f.aqua){
+    const ab = $("aquaBtn");
+    ab.classList.remove("pulse"); void ab.offsetWidth; ab.classList.add("pulse");
+    tone(700 + Math.random() * 120, 0.1, "sine", 0.15);
+    return;
+  }
   const g = goals[f.gi];
   if (g) g.disp = Math.max(g.left, (g.disp ?? g.left) - 1);
   const chip = $("gc" + f.gi);
@@ -1721,9 +1734,9 @@ function hasAnyMove(){
   for (let r = 0; r < ROWS; r++)
     for (let c = 0; c < COLS; c++){
       const d = grid[r][c];
-      if (!d || d.trapped) continue;
-      if (c + 1 < COLS && grid[r][c+1] && !grid[r][c+1].trapped && grid[r][c+1].type === d.type) return true;
-      if (r + 1 < ROWS && grid[r+1][c] && !grid[r+1][c].trapped && grid[r+1][c].type === d.type) return true;
+      if (!d) continue;
+      if (c + 1 < COLS && grid[r][c+1] && grid[r][c+1].type === d.type) return true;
+      if (r + 1 < ROWS && grid[r+1][c] && grid[r+1][c].type === d.type) return true;
     }
   return false;
 }
@@ -1922,9 +1935,9 @@ function render(t){
       for (let c = 0; c < row.length; c++){
         const d = row[c];
         if (!d) continue;
-        const inSel = state === "drag" && !d.trapped &&
+        const inSel = state === "drag" &&
           d.type === (path.length ? grid[path[0].r][path[0].c].type : null) && inPathDot(d);
-        const glowing = inSel || (loopType && d.type === loopType && !d.trapped);
+        const glowing = inSel || (loopType && d.type === loopType);
         const hinted = hintCells && state === "idle" &&
           hintCells.some(p => p.r === r && p.c === c);
         if (glowing) d.scale = Math.min(1.18, d.scale + 0.035);
@@ -2133,7 +2146,7 @@ function openAquarium(){
     .map(t => `<span class="aquaChip"><img src="${ASSETS[t.img]}" alt="${t.name}">${rescued[t.key]}</span>`)
     .join("");
   $("aquaMsg").textContent = total === 0
-    ? "Your aquarium is empty! From level 8, pop Morgana's bubbles to rescue friends — they'll swim here forever."
+    ? "Your aquarium is empty! From level 8, swipe Morgana's bubbled friends into your line to rescue them — they'll swim here forever."
     : total + (total === 1 ? " rescued friend lives" : " rescued friends live") + " here. Keep popping bubbles!";
   // show up to 20 swimmers, randomly sampled
   while (entries.length > 20) entries.splice(Math.floor(Math.random() * entries.length), 1);
