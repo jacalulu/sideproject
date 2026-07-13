@@ -337,9 +337,11 @@
   #factImg { height:116px;
     filter:drop-shadow(0 10px 18px rgba(0,20,60,.25))
            drop-shadow(0 0 26px var(--tintGlow, rgba(110,195,225,.3))); }
-  #factHost { font-size:17px; letter-spacing:.3px; }
-  #factText { min-height:72px; display:block; line-height:1.65; }
-  #factText .w { border-radius:6px; padding:1px 3px; margin:0 -3px; transition:background .12s, color .12s; }
+  #factHost { font-size:16px; letter-spacing:.3px; color:var(--ink-soft); }
+  /* the fact is the reading practice — biggest, clearest text on the card */
+  #factText { min-height:100px; display:block; font-size:21.5px; line-height:1.55;
+    font-weight:600; color:var(--ink); text-wrap:balance; }
+  #factText .w { border-radius:7px; padding:1px 4px; margin:0 -4px; transition:background .12s, color .12s; }
   #factText .w.on { background:var(--coral); color:#fff; }
   #factBtn { width:100%; font-size:20px; padding:16px 20px; line-height:1.2; }
 
@@ -1340,10 +1342,30 @@ function highlightAt(charIdx){
   setWordOn(target);
 }
 
+/* the level-intro cards get a clean stage: just the zone painting behind
+   them — board, mission box, and chrome wait until the story is told */
+function hideStage(){
+  $("hud").classList.add("menuHide");
+  $("btns").classList.add("menuHide");
+  $("goalsDock").classList.add("off");
+}
+function revealStage(){
+  if (!$("factOverlay").classList.contains("hidden") ||
+      !$("storyOverlay").classList.contains("hidden")) return;
+  $("hud").classList.remove("menuHide");
+  $("btns").classList.remove("menuHide");
+  updateHud();   // brings the mission box back
+  layout();      // and makes room for it
+}
+const introUp = () =>
+  !$("factOverlay").classList.contains("hidden") ||
+  !$("storyOverlay").classList.contains("hidden");
+
 function showFact(){
   const idx = FACT_ORDER[(level - 1) % FACTS.length];
   const fact = FACTS[idx];
   currentFact = fact; currentFactIdx = idx;
+  hideStage();
   factPlaying = false; factDone = false;
   const host = HOSTS[fact.h];
   const img  = host.img ? ASSETS[host.img]
@@ -1479,11 +1501,13 @@ function finishFact(delay){
     $("factOverlay").classList.add("hidden");
     setWordOn(null);
     maybeMorganaStory();
+    revealStage();
   }, delay);
 }
 
 function maybeMorganaStory(){
   if (levelCfg && levelCfg.traps && !store.get("mermaidDots.seenMorgana", "")){
+    hideStage();
     $("storyOverlay").classList.remove("hidden");
     store.set("mermaidDots.seenMorgana", "1");
   }
@@ -1992,7 +2016,7 @@ function render(t){
     ctx.fill();
   }
 
-  if (state !== "menu" && !aquariumOpen){
+  if (state !== "menu" && !aquariumOpen && !introUp()){
     // frosted glass board panel
     if (frost){
       ctx.save();
@@ -2314,6 +2338,7 @@ $("againBtn").addEventListener("click", () => {
 });
 $("storyBtn").addEventListener("click", () => {
   $("storyOverlay").classList.add("hidden");
+  revealStage();
 });
 $("factBtn").addEventListener("click", () => {
   ensureAudio();
