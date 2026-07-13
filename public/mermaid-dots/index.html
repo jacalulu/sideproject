@@ -407,14 +407,23 @@
   #retrySwirl { height:84px; --d1:3.4s; --rot:2.4deg; --dy:3px; }
   #aquaHero { height:110px; --d1:5s; --rot:1.2deg; --dy:6px; }
 
-  /* full-screen Veo celebration behind the frosted win card; when it's
-     playing, the in-card flipbook steps aside */
+  /* full-screen Veo celebration; when it plays, the flipbook steps aside
+     and the floating pieces spread top / bottom so the dancer owns the
+     middle of the screen. No card, no chrome — three light layers. */
   #winVid { position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
     opacity:0; transition:opacity .6s ease; pointer-events:none; }
   #winOverlay.vidmode #winVid { opacity:1; }
   #winOverlay.vidmode .winRow { display:none; }
-  /* card drops to the bottom so the dancer owns the screen */
-  #winOverlay.vidmode { justify-content:flex-end; padding-bottom:84px; }
+  #winOverlay { gap:16px; }
+  #winOverlay.vidmode { justify-content:space-between;
+    padding:calc(64px + env(safe-area-inset-top)) 20px calc(30px + env(safe-area-inset-bottom)); }
+  #winTop { display:flex; flex-direction:column; align-items:center; gap:10px; z-index:1; }
+  #winTitle { font-size:31px; color:#fff; letter-spacing:.5px; text-wrap:balance;
+    text-shadow:0 2px 16px rgba(6,26,58,.7), 0 1px 3px rgba(6,26,58,.55); }
+  #winTop .stars img { width:54px; height:54px;
+    filter:drop-shadow(0 0 14px rgba(255,209,102,.6)) drop-shadow(0 3px 6px rgba(0,20,60,.35)); }
+  #winBottom { display:flex; flex-direction:column; align-items:center; gap:10px; z-index:1; }
+  #winRescue { font-size:13.5px; color:#fff; text-shadow:0 1px 8px rgba(6,26,58,.65); }
   .winRow { position:relative; display:flex; align-items:center; justify-content:center; min-height:244px; }
   .winRow::before {  /* radiant burst behind the dancing mermaid */
     content:""; position:absolute; width:250px; height:250px; border-radius:50%;
@@ -473,19 +482,22 @@
   </div>
 </div>
 
+<!-- the win state is celebration, not a dialog: no card, no chrome —
+     just stars + title up top, the dancer owning the screen, one button -->
 <div class="overlay hidden" id="winOverlay">
   <video id="winVid" muted playsinline loop preload="none" aria-hidden="true"></video>
-  <div class="card glass">
+  <div id="winTop">
     <div class="stars" id="starRow"><span><img alt="star"></span><span><img alt="star"></span><span><img alt="star"></span></div>
-    <div class="winRow">
-      <div class="heroStack">
-        <img class="chara" id="winImg" alt="">
-        <img class="chara" id="winImg2" alt="" aria-hidden="true">
-      </div>
-    </div>
     <h2 id="winTitle">Level Complete!</h2>
-    <p id="winText"></p>
-    <div class="promise" id="winRescue" style="display:none"></div>
+  </div>
+  <div class="winRow">
+    <div class="heroStack">
+      <img class="chara" id="winImg" alt="">
+      <img class="chara" id="winImg2" alt="" aria-hidden="true">
+    </div>
+  </div>
+  <div id="winBottom">
+    <div id="winRescue" style="display:none"></div>
     <button class="btn" id="nextBtn">Continue ➜</button>
   </div>
 </div>
@@ -1053,6 +1065,7 @@ function openMap(){
   stopWinAnim();
   stopWinVid();
   state = "map";
+  $("btns").classList.remove("menuHide");   // chrome returns after the celebration
   path = []; loopClosed = false; pointerPos = null; mapDragging = false; flyers = [];
   mapScroll = Math.min(mapMaxScroll(), Math.max(0, mapWorldY(progress) - H * 0.55));
   $("levelNum").textContent = "Map";
@@ -1793,16 +1806,17 @@ function afterSettle(){
     store.set("mermaidDots.stars", JSON.stringify(starsByLevel));
     const zoneDone = level % 10 === 0;
     $("winTitle").textContent = zoneDone ? "Zone Complete!" : "Level Complete!";
-    $("winText").textContent = zoneDone
-      ? "King Nerio is SO proud — a whole new part of the ocean awaits!"
-      : "You found all the friends — they're safe with the mermaids now!";
     if (zoneDone){ stopWinAnim(); stopWinVid(); $("winImg").src = ASSETS.kingNerio; }
     else { startWinAnim(); startWinVid(); }
     const wr = $("winRescue");
     wr.style.display = rescuedThisLevel > 0 ? "" : "none";
-    wr.textContent = "🫧 You rescued " + rescuedThisLevel +
+    wr.textContent = "You rescued " + rescuedThisLevel +
       (rescuedThisLevel === 1 ? " friend" : " friends") + " for your aquarium!";
-    setTimeout(() => $("winOverlay").classList.remove("hidden"), 800);
+    setTimeout(() => {
+      $("winOverlay").classList.remove("hidden");
+      $("btns").classList.add("menuHide");   // celebration owns the screen —
+      $("goalsDock").classList.add("off");   // no chrome, no finished mission box
+    }, 800);
     level++;                       // replays advance along already-unlocked trail
     if (level > progress){         // first-time win: unlock the next level
       progress = level;
