@@ -90,16 +90,19 @@
   #goalsDock { position:absolute; left:0; right:0; z-index:9;
     display:flex; justify-content:center; padding:0 12px; pointer-events:none; }
   #goalsDock.off { display:none; }
-  /* pale sea glass, not solid white — the water glows through it like the
-     dialog cards; the shells and tubes carry the contrast */
+  /* pale sea glass, not solid white — and tinted per zone: the glass is
+     rebuilt from the dominant hue of the current scene painting (set as
+     CSS vars by zoneTint()), so the box always looks placed IN the scene */
   #goalsBox { gap:20px; padding:9px 22px; border-radius:999px;
-    background:linear-gradient(170deg, rgba(255,255,255,.60), rgba(199,233,245,.42));
+    background:linear-gradient(170deg,
+      var(--tintTop, rgba(255,255,255,.60)),
+      var(--tintBot, rgba(199,233,245,.42)));
     backdrop-filter:blur(14px) saturate(1.25);
     -webkit-backdrop-filter:blur(14px) saturate(1.25);
     border:1.5px solid rgba(255,255,255,.7);
     box-shadow:0 6px 18px rgba(4,20,60,.22),
       inset 0 1px 0 rgba(255,255,255,.8),
-      inset 0 -12px 20px rgba(110,195,225,.16);
+      inset 0 -12px 20px var(--tintGlow, rgba(110,195,225,.16));
     color:var(--ink); text-shadow:none; }
   /* one goal = shell nest (the creature's home) + tide tube (liquid
      progress in the creature's own color) + big numerals for counting */
@@ -808,6 +811,41 @@ function makeFrost(){
   frost = { canvas: out, x, y, w, h };
 }
 
+/* ---------- adaptive glass tint ----------
+   Sample the zone painting's dominant hue (chroma-weighted circular mean,
+   so grey water doesn't wash it out) and rebuild the mission box's glass
+   from that hue at fixed high lightness — warm cream glass in the lagoon,
+   rose glass in the cove — while ink text stays readable everywhere. */
+function zoneTint(){
+  const dock = $("goalsDock");
+  const im = IMGS[zone.bg];
+  if (!im || !im.width){ return; }
+  try {
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = 24;
+    const c = cv.getContext("2d");
+    c.drawImage(im, 0, 0, 24, 24);
+    const d = c.getImageData(0, 0, 24, 24).data;
+    let X = 0, Y = 0;
+    for (let i = 0; i < d.length; i += 4){
+      const r = d[i], g = d[i+1], b = d[i+2];
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+      const chroma = mx - mn;
+      if (chroma < 8) continue;               // grey pixels carry no hue vote
+      let h;
+      if (mx === r)      h = ((g - b) / chroma) % 6;
+      else if (mx === g) h = (b - r) / chroma + 2;
+      else               h = (r - g) / chroma + 4;
+      const rad = h * Math.PI / 3;
+      X += Math.cos(rad) * chroma; Y += Math.sin(rad) * chroma;
+    }
+    const hue = Math.round(((Math.atan2(Y, X) * 180 / Math.PI) + 360) % 360);
+    dock.style.setProperty("--tintTop",  `hsla(${hue}, 52%, 91%, .62)`);
+    dock.style.setProperty("--tintBot",  `hsla(${hue}, 55%, 82%, .45)`);
+    dock.style.setProperty("--tintGlow", `hsla(${hue}, 60%, 68%, .22)`);
+  } catch(e){}                                // tainted canvas etc: keep defaults
+}
+
 /* ---------- level lifecycle ---------- */
 function newDot(){
   return { type: activeTypes[Math.floor(Math.random() * activeTypes.length)],
@@ -821,6 +859,7 @@ function startLevel(){
   moves = levelCfg.moves;
   zone = levelCfg.zone;
   COLS = ROWS = levelCfg.size;
+  zoneTint();    // the mission box's glass adapts to this zone's palette
   updateHud();   // fill the goal chips first so layout measures the real HUD height
   layout();
 
