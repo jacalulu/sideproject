@@ -1,5 +1,7 @@
 # Builds the Capacitor iOS app and uploads it to TestFlight.
 # Runs in GitHub Actions on a macOS runner — see .github/workflows/ios-testflight.yml
+require "shellwords"
+
 default_platform(:ios)
 
 platform :ios do
@@ -43,11 +45,30 @@ platform :ios do
       keychain_password: keychain_pass
     )
 
-    import_certificate(
-      certificate_path: ENV.fetch("IOS_DIST_CERT_PATH"),
-      certificate_password: ENV.fetch("IOS_DIST_CERT_PASSWORD"),
-      keychain_name: keychain_name,
-      keychain_password: keychain_pass
+    # Import with the exact invocation the workflow's validation step proved
+    # works. In runs #10 and #11, fastlane's import_certificate reported
+    # "MAC verification failed during PKCS12 import (wrong password?)" for
+    # the very file and password that a direct `security import -f pkcs12`
+    # had accepted seconds earlier on the same runner — run #11's validation
+    # step passed and its lane import still failed. So bypass the wrapper
+    # and run the observably-working command; the explicit format flag is
+    # the material difference. log:false keeps the password out of the
+    # command echo (GitHub masks secret values regardless).
+    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}-db")
+    keychain_path = File.expand_path("~/Library/Keychains/#{keychain_name}") unless File.exist?(keychain_path)
+    sh(
+      "security import #{ENV.fetch('IOS_DIST_CERT_PATH').shellescape} " \
+      "-k #{keychain_path.shellescape} " \
+      "-P #{ENV.fetch('IOS_DIST_CERT_PASSWORD').shellescape} " \
+      "-f pkcs12 -T /usr/bin/codesign -T /usr/bin/security",
+      log: false
+    )
+    # The one thing import_certificate did beyond the import: let codesign
+    # use the key without a UI prompt.
+    sh(
+      "security set-key-partition-list -S apple-tool:,apple:,codesign: " \
+      "-s -k #{keychain_pass.shellescape} #{keychain_path.shellescape} >/dev/null 2>&1",
+      log: false
     )
 
     # import_certificate reports a failed PKCS#12 import as an ERROR log line
