@@ -50,16 +50,21 @@ platform :ios do
       keychain_password: keychain_pass
     )
 
-    # Record what the keychain actually holds at the moment sigh consults it.
-    # Run #9 failed here with "Could not find a matching code signing identity
-    # for type 'AppStore'" while the failure dump reported 0 valid identities,
-    # which does not distinguish a certificate that imported but has no chain
-    # from one that never imported. Printing both listings separates them:
-    # an identity present in the unfiltered list but absent from the -v list
-    # is a chain problem, absent from both is an import problem.
-    sh("security list-keychains -d user || true")
-    sh("echo '--- all codesigning identities ---'; security find-identity -p codesigning || true")
-    sh("echo '--- valid codesigning identities ---'; security find-identity -v -p codesigning || true")
+    # import_certificate reports a failed PKCS#12 import as an ERROR log line
+    # and lets the lane continue. In run #10 that turned an unreadable .p12
+    # into a confusing failure two actions later, inside sigh, as "Could not
+    # find a matching code signing identity". Assert the identity is actually
+    # present so the lane stops at the step that went wrong.
+    identities = sh("security find-identity -v -p codesigning || true", log: false)
+    UI.command_output(identities.strip)
+    unless identities.include?("Apple Distribution")
+      UI.user_error!(
+        "No Apple Distribution identity in the keychain after import. " \
+        "The certificate did not import — check the import_certificate step " \
+        "above for the reason (a PKCS#12 written with algorithms macOS does " \
+        "not support reports itself as a wrong password)."
+      )
+    end
 
     sigh(
       api_key: api_key,
