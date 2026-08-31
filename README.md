@@ -20,14 +20,55 @@ fullscreen app (PWA manifest + service worker). Each later merge to
 next time it's opened (the service worker fetches network-first). No
 app store, no build step, no review queue.
 
-**iPhone via TestFlight:** the repo carries a Capacitor iOS project
-(`ios/`, `capacitor.config.json`) and a manual **iOS TestFlight**
-GitHub Actions workflow that builds on a macOS runner and uploads with
-Fastlane using cloud-managed signing. One-time setup: enroll in the
-Apple Developer Program, create the app record + an App Store Connect
-API key, add the four repo secrets named in
-`.github/workflows/ios-testflight.yml`, then run the workflow from the
-Actions tab. Each run uploads a new TestFlight build.
+**iPhone via TestFlight:** the repo already carries everything the build
+needs — a Capacitor iOS project (`ios/`, `capacitor.config.json`), a
+Fastlane lane (`fastlane/Fastfile`), and a manual **iOS TestFlight**
+GitHub Actions workflow that builds on a macOS runner and uploads using
+cloud-managed signing. No Mac required: the runner is the Mac, and Xcode
+creates the certificate and provisioning profile itself from the API key,
+so there is nothing to generate or download by hand.
+
+One-time Apple setup (about 20 minutes, all in the browser):
+
+1. **Register the App ID.** developer.apple.com -> Certificates, Identifiers
+   & Profiles -> Identifiers -> + -> App IDs -> App. Bundle ID (explicit):
+   `com.jacalulu.mermaiddots`. This must match `appId` in
+   `capacitor.config.json` and `PRODUCT_BUNDLE_IDENTIFIER` in the Xcode
+   project exactly.
+2. **Create the app record.** appstoreconnect.apple.com -> Apps -> + -> New
+   App. Platform iOS, name `Mermaid Dots`, pick the bundle ID from step 1,
+   and give it any SKU (e.g. `mermaid-dots-1`).
+3. **Grab the Team ID.** developer.apple.com -> Membership details. It is the
+   10-character code -> secret `APPLE_TEAM_ID`.
+4. **Create an App Store Connect API key.** App Store Connect -> Users and
+   Access -> Integrations -> App Store Connect API -> + . Give it the
+   **App Manager** role. Download the `.p8` file — Apple lets you download it
+   exactly once. The page shows the **Key ID** (-> `APP_STORE_CONNECT_KEY_ID`)
+   and, above the table, the **Issuer ID** (-> `APP_STORE_CONNECT_ISSUER_ID`).
+5. **Base64-encode the key** so it survives as a secret:
+   `base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy` -> `APP_STORE_CONNECT_KEY_B64`.
+6. **Add the four secrets.** GitHub repo -> Settings -> Secrets and variables
+   -> Actions -> New repository secret, for each of `APPLE_TEAM_ID`,
+   `APP_STORE_CONNECT_KEY_ID`, `APP_STORE_CONNECT_ISSUER_ID`,
+   `APP_STORE_CONNECT_KEY_B64`.
+7. **Run it.** Actions tab -> **iOS TestFlight** -> Run workflow. It takes
+   roughly 10-20 minutes; Apple then processes the build for another
+   10-15 minutes before it shows up.
+8. **Install on the phone.** App Store Connect -> your app -> TestFlight ->
+   Internal Testing -> add yourself as a tester. Internal testers (up to 100
+   people on your own team) get builds immediately with **no App Store
+   review**. Install Apple's TestFlight app on the iPhone and the build
+   appears there.
+
+Every later run of the workflow ships a new build; the build number is the
+GitHub run number, so it always increases. To change the user-visible
+version, bump `MARKETING_VERSION` in `ios/App/App.xcodeproj/project.pbxproj`.
+
+Going beyond TestFlight to a public App Store listing is a separate step and
+*does* require review: screenshots, a description, a privacy policy URL, and
+an App Privacy questionnaire. The game collects nothing and talks to no
+server (progress lives in `localStorage`), so that questionnaire is all
+"No" — but note that a kids-category listing brings extra review scrutiny.
 
 **How to play**
 - Start from the **adventure map**: a scrollable trail that winds up
