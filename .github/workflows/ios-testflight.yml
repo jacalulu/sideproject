@@ -1,11 +1,14 @@
 name: iOS TestFlight
 
-# Manual trigger: run from the Actions tab once the four Apple secrets are set.
+# Manual trigger: run from the Actions tab once the Apple secrets are set.
 # Requires repo secrets:
 #   APP_STORE_CONNECT_KEY_ID      - App Store Connect API key ID
 #   APP_STORE_CONNECT_ISSUER_ID   - App Store Connect issuer ID
 #   APP_STORE_CONNECT_KEY_B64     - the .p8 key file, base64-encoded
 #   APPLE_TEAM_ID                 - 10-char Apple Developer team ID
+#   IOS_DIST_CERT_P12             - Apple Distribution cert + private key,
+#                                   as a .p12, base64-encoded
+#   IOS_DIST_CERT_PASSWORD        - password protecting that .p12
 on:
   workflow_dispatch:
 
@@ -34,6 +37,16 @@ jobs:
           APP_STORE_CONNECT_KEY_B64: ${{ secrets.APP_STORE_CONNECT_KEY_B64 }}
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
 
+      # The distribution certificate is supplied, not created: a runner cannot
+      # persist a private key, so letting Xcode manage signing minted and
+      # abandoned a new certificate every run.
+      - name: Write the distribution certificate to disk
+        run: |
+          echo "$IOS_DIST_CERT_P12" | base64 -d > "$RUNNER_TEMP/dist.p12"
+          echo "IOS_DIST_CERT_PATH=$RUNNER_TEMP/dist.p12" >> "$GITHUB_ENV"
+        env:
+          IOS_DIST_CERT_P12: ${{ secrets.IOS_DIST_CERT_P12 }}
+
       - name: Build and upload to TestFlight
         # --verbose prints the exportArchive invocation and its raw output.
         # Without it gym reports only its own inferred cause and the real
@@ -44,6 +57,7 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_B64: ${{ secrets.APP_STORE_CONNECT_KEY_B64 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
 
       # exportArchive writes its real error to a log on the runner that gym
       # never prints, leaving only fastlane's guess ("no provisioning profile
