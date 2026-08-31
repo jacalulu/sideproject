@@ -40,12 +40,44 @@ jobs:
       # The distribution certificate is supplied, not created: a runner cannot
       # persist a private key, so letting Xcode manage signing minted and
       # abandoned a new certificate every run.
-      - name: Write the distribution certificate to disk
+      - name: Write and validate the distribution certificate
         run: |
+          set -euo pipefail
+          if [ -z "${IOS_DIST_CERT_P12:-}" ]; then
+            echo "::error::Secret IOS_DIST_CERT_P12 is empty or unset."
+            exit 1
+          fi
+          if [ -z "${IOS_DIST_CERT_PASSWORD:-}" ]; then
+            echo "::error::Secret IOS_DIST_CERT_PASSWORD is empty or unset."
+            exit 1
+          fi
           echo "$IOS_DIST_CERT_P12" | base64 -d > "$RUNNER_TEMP/dist.p12"
+          if [ ! -s "$RUNNER_TEMP/dist.p12" ]; then
+            echo "::error::Decoded .p12 is empty — IOS_DIST_CERT_P12 is not valid base64."
+            exit 1
+          fi
+          # Fail here, with a readable reason, rather than 60s later inside gym.
+          if ! openssl pkcs12 -in "$RUNNER_TEMP/dist.p12" -noout \
+                 -passin pass:"$IOS_DIST_CERT_PASSWORD" 2>/tmp/p12err; then
+            echo "::error::Could not open the .p12 — wrong IOS_DIST_CERT_PASSWORD, or the file is not a valid PKCS#12 bundle."
+            sed 's/^/  /' /tmp/p12err
+            exit 1
+          fi
+          # Confirm it is a distribution certificate carrying its private key:
+          # a certificate without the key is exactly the failure mode that made
+          # cloud-managed signing unusable here.
+          openssl pkcs12 -in "$RUNNER_TEMP/dist.p12" -clcerts -nokeys \
+            -passin pass:"$IOS_DIST_CERT_PASSWORD" 2>/dev/null \
+            | openssl x509 -noout -subject -enddate
+          if ! openssl pkcs12 -in "$RUNNER_TEMP/dist.p12" -nocerts -noout \
+                 -passin pass:"$IOS_DIST_CERT_PASSWORD" 2>/dev/null; then
+            echo "::error::The .p12 contains no private key. Re-export including the key."
+            exit 1
+          fi
           echo "IOS_DIST_CERT_PATH=$RUNNER_TEMP/dist.p12" >> "$GITHUB_ENV"
         env:
           IOS_DIST_CERT_P12: ${{ secrets.IOS_DIST_CERT_P12 }}
+          IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
 
       - name: Build and upload to TestFlight
         # --verbose prints the exportArchive invocation and its raw output.
