@@ -12,28 +12,52 @@ platform :ios do
       is_key_content_base64: true
     )
 
+    team_id = ENV.fetch("APPLE_TEAM_ID")
+    app_id  = "com.jacalulu.mermaiddots"
+
+    # Temporary keychain for the signing certificate. No-op outside CI.
+    setup_ci
+
+    # Explicit distribution signing, not Xcode's automatic signing.
+    #
+    # Automatic signing cannot work on a headless runner for this team:
+    # xcodebuild signs the *archive* with a development profile, and Apple
+    # refuses to issue a development profile to a team with no registered
+    # devices ("Your team has no devices from which to generate a
+    # provisioning profile"). Forcing Apple Distribution while the style is
+    # still Automatic just trades that for a "conflicting provisioning
+    # settings" error. So mint the distribution certificate and an App Store
+    # profile ourselves with the API key, and sign manually.
+    cert(api_key: api_key, team_id: team_id, development: false)
+    sigh(
+      api_key: api_key,
+      team_id: team_id,
+      app_identifier: app_id,
+      platform: "ios",
+      development: false
+    )
+    profile_name = lane_context[SharedValues::SIGH_NAME]
+
     # Monotonic build number so every CI run is accepted by App Store Connect
     increment_build_number(
       xcodeproj: "ios/App/App.xcodeproj",
       build_number: ENV.fetch("GITHUB_RUN_NUMBER", Time.now.to_i.to_s)
     )
 
-    # Cloud-managed signing: Xcode fetches/creates certs + profiles itself
-    # using the App Store Connect API key. No manual certificates needed.
     build_app(
       project: "ios/App/App.xcodeproj",
       scheme: "App",
       export_method: "app-store",
       output_directory: "build",
-      xcargs: "-allowProvisioningUpdates " \
-              "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')} " \
-              "-authenticationKeyID #{ENV.fetch('APP_STORE_CONNECT_KEY_ID')} " \
-              "-authenticationKeyIssuerID #{ENV.fetch('APP_STORE_CONNECT_ISSUER_ID')} " \
-              "-authenticationKeyPath #{ENV.fetch('ASC_KEY_PATH')}",
+      xcargs: "DEVELOPMENT_TEAM=#{team_id} " \
+              "CODE_SIGN_STYLE=Manual " \
+              "CODE_SIGN_IDENTITY='Apple Distribution' " \
+              "PROVISIONING_PROFILE_SPECIFIER='#{profile_name}'",
       export_options: {
         method: "app-store",
-        signingStyle: "automatic",
-        teamID: ENV.fetch("APPLE_TEAM_ID")
+        signingStyle: "manual",
+        teamID: team_id,
+        provisioningProfiles: { app_id => profile_name }
       }
     )
 
