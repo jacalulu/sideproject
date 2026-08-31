@@ -23,6 +23,22 @@ jobs:
         with:
           node-version: 22
 
+      # App Store Connect enforces a minimum SDK: run #12 built, signed and
+      # exported successfully and was refused only at upload — "built with the
+      # iOS 18.5 SDK. All iOS and iPadOS apps must be built with the iOS 26
+      # SDK or later, included in Xcode 26 or later." The runner image carries
+      # several Xcodes and defaults to an old one, so select the newest. The
+      # inventory is printed so a future SDK-floor failure shows exactly what
+      # was available.
+      - name: Select the newest Xcode on the runner
+        run: |
+          echo "Available Xcodes:"
+          ls -d /Applications/Xcode*.app
+          LATEST="$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)"
+          echo "Selecting: $LATEST"
+          sudo xcode-select -s "$LATEST"
+          xcodebuild -version
+
       - name: Install Capacitor and sync web app into the iOS project
         run: |
           npm ci || npm install
