@@ -35,7 +35,10 @@ jobs:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
 
       - name: Build and upload to TestFlight
-        run: fastlane ios beta
+        # --verbose prints the exportArchive invocation and its raw output.
+        # Without it gym reports only its own inferred cause and the real
+        # error never reaches the log. Temporary, for diagnosing signing.
+        run: fastlane ios beta --verbose
         env:
           APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
