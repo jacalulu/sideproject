@@ -38,6 +38,14 @@ platform :ios do
               "-authenticationKeyID #{ENV.fetch('APP_STORE_CONNECT_KEY_ID')} " \
               "-authenticationKeyIssuerID #{ENV.fetch('APP_STORE_CONNECT_ISSUER_ID')} " \
               "-authenticationKeyPath #{ENV.fetch('ASC_KEY_PATH')}",
+      # The export is a second, separate xcodebuild invocation, and `xcargs`
+      # only reaches the archive. Without the API key here too, exportArchive
+      # cannot ask Apple for the distribution profile and gym fails with
+      # "no provisioning profile mapping was provided".
+      export_xcargs: "-allowProvisioningUpdates " \
+                     "-authenticationKeyID #{ENV.fetch('APP_STORE_CONNECT_KEY_ID')} " \
+                     "-authenticationKeyIssuerID #{ENV.fetch('APP_STORE_CONNECT_ISSUER_ID')} " \
+                     "-authenticationKeyPath #{ENV.fetch('ASC_KEY_PATH')}",
       export_options: {
         method: "app-store",
         signingStyle: "automatic",
