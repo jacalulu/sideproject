@@ -75,6 +75,20 @@ jobs:
             exit 1
           fi
           echo "IOS_DIST_CERT_PATH=$RUNNER_TEMP/dist.p12" >> "$GITHUB_ENV"
+
+          # The .p12 holds the leaf certificate and its private key, but not
+          # the intermediate that issued it. Without that intermediate the
+          # chain does not resolve and macOS does not count the certificate as
+          # a valid codesigning identity — which is how run #9 reached sigh
+          # with "0 valid identities found".
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/AppleWWDRCAG3.cer" \
+            https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
+          if [ ! -s "$RUNNER_TEMP/AppleWWDRCAG3.cer" ]; then
+            echo "::error::Failed to download the Apple WWDR intermediate certificate."
+            exit 1
+          fi
+          echo "WWDR_CERT_PATH=$RUNNER_TEMP/AppleWWDRCAG3.cer" >> "$GITHUB_ENV"
+          openssl x509 -in "$RUNNER_TEMP/AppleWWDRCAG3.cer" -inform DER -noout -subject -enddate
         env:
           IOS_DIST_CERT_P12: ${{ secrets.IOS_DIST_CERT_P12 }}
           IOS_DIST_CERT_PASSWORD: ${{ secrets.IOS_DIST_CERT_PASSWORD }}
