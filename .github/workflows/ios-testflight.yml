@@ -74,6 +74,29 @@ jobs:
             echo "::error::The .p12 contains no private key. Re-export including the key."
             exit 1
           fi
+
+          # openssl opening the file is not sufficient: `security` is what
+          # actually consumes it, and it supports a narrower set of PKCS#12
+          # algorithms. Modern openssl defaults (AES-256 + SHA-256 MAC) are
+          # rejected by macOS as "MAC verification failed (wrong password?)",
+          # which run #10 hit — and fastlane's import_certificate logs that
+          # error without failing the lane, so it surfaced much later as a
+          # missing signing identity. Import into a throwaway keychain here so
+          # an unreadable bundle fails immediately, with the real reason.
+          VALIDATE_KC="$RUNNER_TEMP/validate.keychain-db"
+          security create-keychain -p "" "$VALIDATE_KC"
+          security unlock-keychain -p "" "$VALIDATE_KC"
+          if ! security import "$RUNNER_TEMP/dist.p12" -k "$VALIDATE_KC" \
+                 -P "$IOS_DIST_CERT_PASSWORD" -f pkcs12 \
+                 -T /usr/bin/codesign >/tmp/imp.log 2>&1; then
+            echo "::error::macOS could not import the .p12. openssl reads it, so this is an unsupported PKCS#12 encryption algorithm, not a wrong password. Re-export with: openssl pkcs12 -export -inkey dist.key -in dist.pem -out dist.p12 -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1"
+            sed 's/^/  /' /tmp/imp.log
+            security delete-keychain "$VALIDATE_KC" || true
+            exit 1
+          fi
+          echo "macOS import check passed:"
+          security find-identity -v -p codesigning "$VALIDATE_KC" | sed 's/^/  /'
+          security delete-keychain "$VALIDATE_KC"
           echo "IOS_DIST_CERT_PATH=$RUNNER_TEMP/dist.p12" >> "$GITHUB_ENV"
 
           # The .p12 holds the leaf certificate and its private key, but not
