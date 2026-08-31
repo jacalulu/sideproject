@@ -25,7 +25,7 @@ platform :ios do
       scheme: "App",
       export_method: "app-store",
       output_directory: "build",
-      xcargs: "-allowProvisioningUpdates -allowProvisioningDeviceRegistration " \
+      xcargs: "-allowProvisioningUpdates " \
               "DEVELOPMENT_TEAM=#{ENV.fetch('APPLE_TEAM_ID')} " \
               "-authenticationKeyID #{ENV.fetch('APP_STORE_CONNECT_KEY_ID')} " \
               "-authenticationKeyIssuerID #{ENV.fetch('APP_STORE_CONNECT_ISSUER_ID')} " \
