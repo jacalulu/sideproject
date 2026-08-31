@@ -29,12 +29,37 @@ platform :ios do
     # certificates they carry no private key and are freely regenerated.
     setup_ci
 
+    keychain_name = ENV.fetch("MATCH_KEYCHAIN_NAME", "fastlane_tmp_keychain")
+    keychain_pass = ENV.fetch("MATCH_KEYCHAIN_PASSWORD", "")
+
+    # The Apple WWDR intermediate must be present before the leaf certificate
+    # counts as a usable identity: `security find-identity -v -p codesigning`
+    # lists only identities whose chain resolves to a trusted root, and our
+    # .p12 carries the leaf and its private key alone. A developer's Mac has
+    # this intermediate installed by Xcode; a bare runner does not.
+    import_certificate(
+      certificate_path: ENV.fetch("WWDR_CERT_PATH"),
+      keychain_name: keychain_name,
+      keychain_password: keychain_pass
+    )
+
     import_certificate(
       certificate_path: ENV.fetch("IOS_DIST_CERT_PATH"),
       certificate_password: ENV.fetch("IOS_DIST_CERT_PASSWORD"),
-      keychain_name: ENV.fetch("MATCH_KEYCHAIN_NAME", "fastlane_tmp_keychain"),
-      keychain_password: ENV.fetch("MATCH_KEYCHAIN_PASSWORD", "")
+      keychain_name: keychain_name,
+      keychain_password: keychain_pass
     )
+
+    # Record what the keychain actually holds at the moment sigh consults it.
+    # Run #9 failed here with "Could not find a matching code signing identity
+    # for type 'AppStore'" while the failure dump reported 0 valid identities,
+    # which does not distinguish a certificate that imported but has no chain
+    # from one that never imported. Printing both listings separates them:
+    # an identity present in the unfiltered list but absent from the -v list
+    # is a chain problem, absent from both is an import problem.
+    sh("security list-keychains -d user || true")
+    sh("echo '--- all codesigning identities ---'; security find-identity -p codesigning || true")
+    sh("echo '--- valid codesigning identities ---'; security find-identity -v -p codesigning || true")
 
     sigh(
       api_key: api_key,
