@@ -41,3 +41,28 @@ jobs:
           APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           APP_STORE_CONNECT_KEY_B64: ${{ secrets.APP_STORE_CONNECT_KEY_B64 }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+
+      # exportArchive writes its real error to a log on the runner that gym
+      # never prints, leaving only fastlane's guess ("no provisioning profile
+      # mapping was provided") in the console. Surface it so signing failures
+      # can be diagnosed from the run instead of inferred.
+      - name: Dump Xcode signing and export logs on failure
+        if: failure()
+        run: |
+          echo "===== gym log directory ====="
+          ls -la ~/Library/Logs/gym/ 2>/dev/null || echo "(no gym log directory)"
+          for f in ~/Library/Logs/gym/*.log; do
+            [ -e "$f" ] || continue
+            echo ""
+            echo "===== $f ====="
+            echo "--- signing / provisioning / error lines ---"
+            grep -niE "error|provisioning|certificate|signing|codesign|entitlement" "$f" | tail -n 150 || true
+            echo "--- last 60 lines ---"
+            tail -n 60 "$f"
+          done
+          echo ""
+          echo "===== available signing identities ====="
+          security find-identity -v -p codesigning || true
+          echo "===== installed provisioning profiles ====="
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ 2>/dev/null || echo "(none installed)"
+
