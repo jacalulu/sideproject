@@ -1,7 +1,7 @@
 # Mermaid Dots — project guide for Claude
 
 A kid-friendly dot-connecting puzzle game. The entire game is ONE
-self-contained ~1MB HTML file: `public/mermaid-dots/index.html` (assets
+self-contained ~3.7MB HTML file: `public/mermaid-dots/index.html` (assets
 embedded as data URLs; loose originals in `public/mermaid-dots/assets/`).
 It ships three ways from this repo:
 
@@ -19,6 +19,18 @@ It ships three ways from this repo:
   select the newest Xcode on the runner (App Store Connect enforces a
   minimum SDK).
 - Android: PWA install from the Pages URL; no store build.
+
+## The journey (backgrounds)
+
+- Levels come in 200-level *chapters*; each chapter is ONE continuous
+  painting (20 slices `bgJ00`..`bgJ19` in `ASSETS`), 8 named zones of 25
+  levels inside it. No hard edges inside a chapter; the only deliberate
+  break is the chapter boundary (splash line on the map, King Nerio's
+  "Chapter Complete!" at level 200). Levels 201+ replay chapter 1's art
+  until chapter 2 is painted.
+- The art is made with `tools/journey/` (read its README first: every
+  rule in it came from a failed run). Generate with GPT-5.4 Image via
+  OpenRouter; test a few hard steps before a bulk run.
 
 ## Versioning
 

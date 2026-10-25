@@ -131,7 +131,7 @@ background-keyed — see `assets/ico-*.webp`, `assets/zone-*.webp`), and
 every character sticker idles with a subtle CSS "alive" float, tuned per
 personality (Finn flutters, King Nerio barely sways). All images
 are WebP embedded as data URLs and the Fredoka font (OFL license) is inlined:
-the whole game is still ONE self-contained ~1 MB HTML file with no
+the whole game is still ONE self-contained ~3.7 MB HTML file with no
 dependencies. Progress, chosen mermaid, and sound setting persist in the
 browser.
 
