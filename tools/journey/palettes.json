@@ -1,0 +1,50 @@
+[
+ {
+  "mid": "#85c2ba",
+  "dark": "#44969a",
+  "light": "#e9e8d0",
+  "lum": 172
+ },
+ {
+  "mid": "#c08487",
+  "dark": "#6d3442",
+  "light": "#eec2c1",
+  "lum": 154
+ },
+ {
+  "mid": "#2a7663",
+  "dark": "#0a3327",
+  "light": "#64c9ab",
+  "lum": 87
+ },
+ {
+  "mid": "#2e767c",
+  "dark": "#0c2f3a",
+  "light": "#60b8ba",
+  "lum": 96
+ },
+ {
+  "mid": "#cdd2db",
+  "dark": "#a8aec3",
+  "light": "#ecedee",
+  "lum": 212
+ },
+ {
+  "mid": "#483976",
+  "dark": "#1a133f",
+  "light": "#997ec9",
+  "lum": 83
+ },
+ {
+  "mid": "#264567",
+  "dark": "#0f1a37",
+  "light": "#4680a3",
+  "lum": 70
+ },
+ {
+  "mid": "#142244",
+  "dark": "#040a29",
+  "light": "#435a7f",
+  "lum": 41
+ }
+]
