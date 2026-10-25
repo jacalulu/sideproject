@@ -8,7 +8,7 @@ sea glass, the stickers are candy.**
 
 | Layer | What it's for | Treatment |
 |---|---|---|
-| **World** | Zone backgrounds, splash keyart, the named cast | Painterly, bioluminescent, dimensional (original Nano Banana art). Never flattened. |
+| **World** | The 200-level journey painting, splash keyart, the named cast | Painterly, bioluminescent, dimensional (original Nano Banana art). Never flattened. |
 | **Sea glass** | Everything the player touches: HUD pills, dialog cards, button chips, board frost | Translucent glass with `backdrop-filter` blur. Dark water glass for HUD (white text), pale pearl glass for dialog cards (dark ink text). CSS-drawn, never baked into images. **Bubbles are gameplay, not decoration**: the only bubble on the board is Morgana's trap bubble — bubble always means "friend to rescue". |
 | **Candy stickers** | All generated icons and board pieces | Chunky, rounded, simplified shapes; soft gradients; one crisp glossy highlight; thin soft white sticker outline with a gentle glow. Generated from one master style (see §5). |
 
@@ -39,7 +39,7 @@ confetti) and are part of each creature's identity — don't reassign them.
   the pills stay quiet so the mission box is the loudest element.
 - **The mission box** (`#goalsDock`) is a sea-glass capsule docked
   directly above the grid, and its glass is **tinted per zone**:
-  `zoneTint()` samples the scene painting's dominant hue (chroma-weighted
+  `zoneTint()` samples the dominant hue of the backdrop window behind the current level (chroma-weighted
   circular mean over a 24px thumbnail) and rebuilds the surface as
   `hsla(hue, ~52%, 91%)` glass — rose in Coral Cove, deep blue in
   Twilight — hue adapts, lightness never does, so ink text always reads. Each goal is a **shell nest + tide tube**: the creature
@@ -59,6 +59,15 @@ confetti) and are part of each creature's identity — don't reassign them.
 - Dialogs own the screen: HUD sits below the overlay backdrop (z 9 vs z 10)
   and dims; only the button bar stays above (z 12).
 - Zone emblems appear on the map chips and the fact card, not in the HUD.
+- **The journey is one painting, not a set of scenes.** A chapter is 200
+  levels (`CHAPTER_LEN`) of one seamless vertical descent; zones (25 levels,
+  `ZONE_LEN`) are only *names* for stretches of it. Never add a hard edge
+  inside a chapter — the only deliberate hard break is the chapter boundary
+  (a white splash line on the map after level 200). Gameplay shows a window
+  into the painting (`bgF`, 0..1) so the backdrop drifts deeper each level.
+- The map's level 1 is at the TOP (the surface) and the trail dives
+  downward; dragging follows the finger. Zone chips tuck against the screen
+  edge opposite the trail so they never collide with level nodes.
 
 ## 5. Generated art pipeline (sticker sheets)
 

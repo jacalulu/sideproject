@@ -57,15 +57,16 @@ The privacy policy required for App Store submission is served by the
 Pages deploy at `/privacy.html`.
 
 **How to play**
-- Start from the **adventure map**: a scrollable trail that winds up
-  through the ocean zones, ten levels per zone painting. Tap any level
+- Start from the **adventure map**: a scrollable trail that dives down
+  through ONE continuous ocean painting, from the sunlit surface (level 1)
+  to the starlit trench (level 200). Tap any level
   you've beaten to replay it (your stars and progress are never lost).
   After every win you return to the map and your mermaid hops forward
   to the next level on the trail.
 - Drag a line between 2 or more matching sea friends to collect them.
 - Close a **loop** (like a square) to splash away every friend of that kind!
 - Collect the friends shown at the top before the wave counter 🌊 runs out.
-- From level 8, some friends are trapped in bubbles — swipe a bubbled friend
+- From level 5, some friends are trapped in bubbles — swipe a bubbled friend
   as part of your matching line to pop it free (a loop rescues every bubbled
   friend of that kind on the board). Rescued friends swim to your aquarium.
 - Run out of waves? Just try again — no penalty, ever.
@@ -76,11 +77,11 @@ over roughly the first 60 levels and then gently plateaus:
 
 | What changes            | When                                    |
 |-------------------------|-----------------------------------------|
-| Creature colors         | 4 → 5 at level 6 → 6 at level 20        |
-| Board size              | 6×6 → 7×7 at level 15 → 8×8 at level 50 |
-| Collection goals        | 2 kinds → 3 kinds at level 12           |
-| Bubble traps            | start at level 8, up to 10 per board    |
-| Ocean zone (background) | new zone every 10 levels, 8 zones cycle |
+| Creature colors         | 4 → 5 at level 3 → 6 at level 14        |
+| Board size              | 6×6 → 7×7 at level 12 → 8×8 at level 40 |
+| Collection goals        | 2 kinds → 3 kinds at level 8            |
+| Bubble traps            | start at level 5, up to 10 per board    |
+| Ocean zone (background) | 8 named zones of 25 levels inside one seamless 200-level painting (a *chapter*) |
 
 Within each 5-level block difficulty rises then resets, so a tough level is
 followed by a breather. Every level is winnable and retries are always free.
@@ -91,11 +92,28 @@ the game:
 - **Ophelia** and **Jaclyn** — pick your mermaid on the start screen; she
   cheers when you win (with **Maestro** the lobster conductor).
 - **Finn** the worried little fish encourages you on the try-again screen.
-- **Morgana** the sea witch is why friends are bubble-trapped from level 8;
+- **Morgana** the sea witch is why friends are bubble-trapped from level 5;
   swipe them into a matching line to rescue them into your aquarium.
-- **King Nerio** congratulates you when you finish each 10-level zone.
+- **King Nerio** congratulates you when you finish each 25-level zone, and
+  throws a big splashy **Chapter Complete** party at level 200 (a whirlpool
+  to the next world).
 
-**Art & tech.** Painterly zone backgrounds, glowing painterly characters,
+**The journey (backgrounds).** Each 200-level *chapter* is one continuous
+painting, 780 x 28,600 px, stored as 20 stacked slices (`bgJ00`..`bgJ19`,
+loose copies `assets/journey-NN.webp`). Gameplay shows a screen-sized window
+into it that drifts a little deeper with every level; the map scrolls through
+the whole thing with no seams. It was made by *outpainting*: each step feeds
+the bottom of the painting so far back to the image model and pastes the
+original pixels over the overlap, with an automatic seam detector that
+retries bad joins. The tooling is in `tools/journey/` (see its README), so
+the next chapter can be generated the same way. Levels past 200 currently
+replay chapter 1's painting behind a splash line ("hard break") until the
+next chapter's art exists (`CHAPTER_LEN` in `index.html`).
+
+**App icon.** Ophelia the mermaid (`AppIcon-512@2x.png` for iOS; PWA icons
+in `public/mermaid-dots/icon-*.png`).
+
+**Art & tech.** Painterly journey backgrounds, glowing painterly characters,
 an animated win screen (an 8-frame Nano Banana flipbook of your mermaid
 dancing), a looping background tune composed by Lyria (ducks under the
 narrated fun facts), pre-narrated fun facts — every host reads their own

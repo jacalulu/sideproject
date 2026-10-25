@@ -590,16 +590,20 @@ const TYPES = [
   { key:"pearl",  name:"Pearl",    img:"piecePearl",  main:"#e88fd2", dark:"#c05fa8" },
 ];
 
+// One chapter = 200 levels = ONE continuous painting (a dive from the sunlit surface to the starlit trench),
+// told in 8 zones of 25 levels. The zones only name the stretch of painting you're in; there are no seams.
+const CHAPTER_LEN = 200, ZONE_LEN = 25;
 const ZONES = [
-  { name:"Sunny Lagoon",     icon:"zoneSun",    bg:"bgSunny" },
-  { name:"Coral Cove",       icon:"zoneCoral",  bg:"bgCoral" },
-  { name:"Kelp Forest",      icon:"zoneKelp",   bg:"bgKelp" },
-  { name:"Shipwreck Bay",    icon:"zoneAnchor", bg:"bgShipwreck" },
-  { name:"Pearl Palace",     icon:"zonePearl",  bg:"bgPearlPalace" },
-  { name:"Jellyfish Grove",  icon:"zoneJelly",  bg:"bgJelly" },
-  { name:"Twilight Deep",    icon:"zoneMoon",   bg:"bgTwilight" },
-  { name:"Starlight Trench", icon:"zoneShoot",  bg:"bgStarlight" },
+  { name:"Sunny Lagoon",     icon:"zoneSun"    },
+  { name:"Coral Cove",       icon:"zoneCoral"  },
+  { name:"Kelp Forest",      icon:"zoneKelp"   },
+  { name:"Shipwreck Bay",    icon:"zoneAnchor" },
+  { name:"Pearl Palace",     icon:"zonePearl"  },
+  { name:"Jellyfish Grove",  icon:"zoneJelly"  },
+  { name:"Twilight Deep",    icon:"zoneMoon"   },
+  { name:"Starlight Trench", icon:"zoneShoot"  },
 ];
+const zoneForLevel = n => ZONES[Math.floor(((n - 1) % CHAPTER_LEN) / ZONE_LEN)];
 // zone emblem + name as an inline label (HUD, fact card)
 const zoneLabel = z => `<img class="zoneIco" src="${ASSETS[z.icon]}" alt=""> ${z.name}`;
 
@@ -640,7 +644,7 @@ let squareToastShown = false, introPending = false, remindTimer = null;
 
 let grid = [];
 let levelCfg = null, activeTypes = [], goals = [], moves = 0;
-let zone = ZONES[Math.floor((level - 1) / 10) % ZONES.length];
+let zone = zoneForLevel(level);
 let state = "menu";           // menu | idle | drag | fall | over
 let path = [], loopClosed = false, pointerPos = null;
 let particles = [], rings = [], bubbles = [];
@@ -662,6 +666,32 @@ const loadAll = Promise.all(Object.entries(ASSETS).map(([k, src]) =>
     IMGS[k] = im;
   })));
 
+/* ---------- the journey: one continuous painting per chapter ----------
+   20 stacked slices (780x1430) of a single seamless descent. Gameplay shows a
+   screen-sized window into it that drifts a little deeper with every level;
+   the adventure map scrolls through the whole thing. */
+const JOURNEY_N = 20, JOURNEY_W = 780, JOURNEY_SH = 1430;
+const JOURNEY_KEYS = Array.from({ length: JOURNEY_N }, (_, i) => "bgJ" + (i < 10 ? "0" : "") + i);
+const journeyScale = () => W / JOURNEY_W;                         // fit the width; the painting is as tall as it needs to be
+const journeyH = () => JOURNEY_N * JOURNEY_SH * journeyScale();   // one chapter, in screen px
+const levelFrac = n => ((n - 1) % CHAPTER_LEN) / (CHAPTER_LEN - 1);
+let bgF = levelFrac(level);       // how far down the journey the gameplay backdrop sits (0..1)
+
+// paint one chapter whose top edge sits at screen y `top`
+function drawChapter(c, top){
+  const sc = journeyScale(), sh = JOURNEY_SH * sc, x = (W - JOURNEY_W * sc) / 2;
+  const i0 = Math.max(0, Math.floor(-top / sh)), i1 = Math.min(JOURNEY_N - 1, Math.floor((H - top) / sh));
+  for (let i = i0; i <= i1; i++){
+    const im = IMGS[JOURNEY_KEYS[i]];
+    if (im && im.width) c.drawImage(im, x, Math.floor(top + i * sh), JOURNEY_W * sc, Math.ceil(sh) + 1);
+  }
+}
+// gameplay backdrop: the window of the journey that this level sits in
+function drawBackdrop(c){
+  c.fillStyle = "#123a6e"; c.fillRect(0, 0, W, H);
+  drawChapter(c, -bgF * Math.max(0, journeyH() - H));
+}
+
 /* ============================================================
    LEVEL GENERATOR — infinite levels from a seeded curve.
    ============================================================ */
@@ -676,20 +706,20 @@ function mulberry32(seed){
 
 function levelConfig(n){
   const rnd = mulberry32(n * 7919 + 13);
-  const d = Math.min(1, (n - 1) / 60);
+  const d = Math.min(1, (n - 1) / 60);                  // main ramp: levels 1-60
+  const late = Math.max(0, Math.min(1, (n - 60) / 140)); // slow second ramp: 60-200
   const s = ((n - 1) % 5) / 4;
-  const colors        = n < 6 ? 4 : n < 20 ? 5 : 6;
-  const size          = n < 15 ? 6 : n < 50 ? 7 : 8;
-  const goalTypeCount = n < 12 ? 2 : 3;
-  const traps         = n < 8 ? 0 : Math.min(10, 2 + Math.floor((n - 8) / 4));
+  const colors        = n < 3 ? 4 : n < 14 ? 5 : 6;
+  const size          = n < 12 ? 6 : n < 40 ? 7 : 8;
+  const goalTypeCount = n < 8 ? 2 : 3;
+  const traps         = n < 5 ? 0 : Math.min(10, 2 + Math.floor((n - 5) / 4));
   const active = TYPES.slice(0, colors);
   const shuffled = active.slice().sort(() => rnd() - 0.5);
-  const amount = Math.round((10 + 14 * d + 4 * s) * (goalTypeCount === 3 ? 0.75 : 1));
+  const amount = Math.round((11 + 14 * d + 3 * late + 4 * s) * (goalTypeCount === 3 ? 0.75 : 1));
   const goals = shuffled.slice(0, goalTypeCount).map(t => ({ type: t, left: amount, total: amount }));
   const total = amount * goalTypeCount;
-  const moves = Math.max(15, Math.min(45, Math.ceil(total / 2.2) + Math.round(12 - 6 * d) + traps));
-  return { active, goals, moves, traps, size,
-           zone: ZONES[Math.floor((n - 1) / 10) % ZONES.length] };
+  const moves = Math.max(15, Math.min(45, Math.ceil(total / 2.2) + Math.round(10 - 6 * d - 2 * late) + traps));
+  return { active, goals, moves, traps, size, zone: zoneForLevel(n) };
 }
 
 /* ---------- layout ---------- */
@@ -790,22 +820,16 @@ function bakeSprites(){
 let frost = null;
 const FROST_PAD = 14, FROST_R = 26;
 
-function coverRect(im){
-  const s = Math.max(W / im.width, H / im.height);
-  return { s, ox: (W - im.width * s) / 2, oy: (H - im.height * s) / 2 };
-}
-
 function makeFrost(){
-  const im = IMGS[zone.bg];
+  const im = IMGS[JOURNEY_KEYS[0]];
   if (!im || !im.width) { frost = null; return; }
   const x = boardX - FROST_PAD, y = boardY - FROST_PAD;
   const w = cell * COLS + FROST_PAD * 2, h = cell * ROWS + FROST_PAD * 2;
-  const { s, ox, oy } = coverRect(im);
   // crop the board region of the background
   const crop = document.createElement("canvas");
   crop.width = Math.ceil(w); crop.height = Math.ceil(h);
   const cc = crop.getContext("2d");
-  cc.drawImage(im, ox - x, oy - y, im.width * s, im.height * s);
+  cc.translate(-x, -y); drawBackdrop(cc);
   // cheap heavy blur: shrink twice, then enlarge
   const small = document.createElement("canvas");
   small.width = Math.max(2, Math.round(w / 14)); small.height = Math.max(2, Math.round(h / 14));
@@ -828,19 +852,19 @@ function makeFrost(){
 }
 
 /* ---------- adaptive glass tint ----------
-   Sample the zone painting's dominant hue (chroma-weighted circular mean,
+   Sample the backdrop window's dominant hue (chroma-weighted circular mean,
    so grey water doesn't wash it out) and rebuild the mission box's glass
    from that hue at fixed high lightness — warm cream glass in the lagoon,
    rose glass in the cove — while ink text stays readable everywhere. */
 function zoneTint(){
   const dock = $("goalsDock");
-  const im = IMGS[zone.bg];
+  const im = IMGS[JOURNEY_KEYS[0]];
   if (!im || !im.width){ return; }
   try {
     const cv = document.createElement("canvas");
     cv.width = cv.height = 24;
     const c = cv.getContext("2d");
-    c.drawImage(im, 0, 0, 24, 24);
+    c.scale(24 / W, 24 / H); drawBackdrop(c);
     const d = c.getImageData(0, 0, 24, 24).data;
     let X = 0, Y = 0;
     for (let i = 0; i < d.length; i += 4){
@@ -877,6 +901,7 @@ function startLevel(){
   goals = levelCfg.goals.map(g => ({ ...g, disp: g.left }));
   moves = levelCfg.moves;
   zone = levelCfg.zone;
+  bgF = levelFrac(level);
   COLS = ROWS = levelCfg.size;
   zoneTint();    // the mission box's glass adapts to this zone's palette
   updateHud();   // fill the goal chips first so layout measures the real HUD height
@@ -907,7 +932,7 @@ function startLevel(){
   prepWinVid();
   if (level !== lastFactLevel){
     lastFactLevel = level;
-    showFact();          // Morgana's story (level 8) chains after dismissal
+    showFact();          // Morgana's story (first trap level) chains after dismissal
   } else {
     maybeMorganaStory(); // retry of a trap level with the story still unseen
   }
@@ -1056,13 +1081,16 @@ let mapScroll = 0, mapDragStartY = 0, mapScrollStart = 0, mapMoved = false, mapD
 let mapHopFrom = 0, mapHopT = 0;   // post-win arrival: hop from the beaten node to the new one
 
 const mapMaxShown = () => progress + 4;               // small peek at what's ahead
-function mapWorldY(L){                                // distance above the map's bottom
-  const s = Math.floor((L - 1) / 10), i = (L - 1) % 10;
-  return s * H + (0.10 + (i + 0.5) * 0.084) * H;
+const mapSp = () => JOURNEY_SH * journeyScale() / 10; // px between level nodes: 10 levels per painting slice
+const mapChapterH = () => CHAPTER_LEN * mapSp();
+function mapWorldY(L){                                // distance BELOW the top of the map: level 1 is at the surface, the trail dives
+  const c = Math.floor((L - 1) / CHAPTER_LEN), i = (L - 1) % CHAPTER_LEN;
+  return c * mapChapterH() + (i + 0.5) * mapSp();
 }
 function mapNodeX(L){ return W / 2 + Math.sin((L - 1) * 0.85) * W * 0.30; }
-function mapScreenY(L){ return H - (mapWorldY(L) - mapScroll); }
-function mapMaxScroll(){ return Math.max(0, mapWorldY(mapMaxShown()) - H * 0.82); }
+function mapScreenY(L){ return mapWorldY(L) - mapScroll; }
+const mapMinScroll = () => -H * 0.16;                 // a little sunlit water above level 1 for the mermaid to stand in
+function mapMaxScroll(){ return Math.max(mapMinScroll(), mapWorldY(mapMaxShown()) - H * 0.82); }
 
 function openMap(){
   if (applyStaleBuild()) return;                      // safe moment for updates
@@ -1074,7 +1102,7 @@ function openMap(){
   state = "map";
   $("btns").classList.remove("menuHide");   // chrome returns after the celebration
   path = []; loopClosed = false; pointerPos = null; mapDragging = false; flyers = [];
-  mapScroll = Math.min(mapMaxScroll(), Math.max(0, mapWorldY(progress) - H * 0.55));
+  mapScroll = Math.min(mapMaxScroll(), Math.max(mapMinScroll(), mapWorldY(progress) - H * 0.45));
   $("levelNum").textContent = "Map";
   $("zoneName").textContent = "tap a level!";
   goalsBox.innerHTML = "";
@@ -1095,16 +1123,24 @@ function mapNodeAt(x, y){
 
 function renderMap(t){
   const maxL = mapMaxShown();
-  const topSection = Math.floor((maxL - 1) / 10);
-  for (let s = 0; s <= topSection; s++){              // one zone painting per section
-    const secTop = H - ((s + 1) * H - mapScroll);
-    if (secTop > H || secTop + H < 0) continue;
-    const bg = IMGS[ZONES[s % ZONES.length].bg];
-    if (bg && bg.width){
-      const sc = Math.max(W / bg.width, H / bg.height);
-      ctx.drawImage(bg, (W - bg.width * sc) / 2, secTop, bg.width * sc, bg.height * sc);
-    } else {
-      ctx.fillStyle = "#123a6e"; ctx.fillRect(0, secTop, W, H);
+  const CH = mapChapterH();
+  ctx.fillStyle = "#123a6e"; ctx.fillRect(0, 0, W, H);
+  for (let c = Math.max(0, Math.floor(mapScroll / CH)); c * CH - mapScroll < H; c++){   // chapters in view
+    const top = c * CH - mapScroll;
+    drawChapter(ctx, top);
+    if (c === 0 && top > 0){                           // pulled above level 1: extend the sunlit surface upward
+      const im = IMGS[JOURNEY_KEYS[0]], sc = journeyScale();
+      if (im && im.width) ctx.drawImage(im, 0, 0, im.width, 2, (W - JOURNEY_W * sc) / 2, 0, JOURNEY_W * sc, top + 1);
+    }
+    if (c > 0){                                        // chapter break: a bright splash line, then a brand-new dive
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 5; ctx.lineCap = "round";
+      ctx.beginPath();
+      for (let x = -10; x <= W + 10; x += 10){
+        const y = top + Math.sin(x * 0.05 + t * 2) * 4;
+        x === -10 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.stroke(); ctx.restore();
     }
   }
   ctx.fillStyle = "rgba(6,22,52,0.18)";               // vignette so the trail reads
@@ -1132,19 +1168,25 @@ function renderMap(t){
   ctx.setLineDash([2, 12]); ctx.stroke(); ctx.setLineDash([]);
 
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  for (let s = 0; s <= topSection; s++){              // zone chip near each zone boundary
-    const y = H - ((s + 1) * H - 0.05 * H - mapScroll);
-    if (y < -30 || y > H + 30) continue;
-    const z = ZONES[s % ZONES.length];
-    const label = z.name + " · " + (s * 10 + 1) + "–" + (s * 10 + 10);
+  const firstChip = Math.max(0, Math.floor((mapScroll - r * 3) / (ZONE_LEN * mapSp())) - 1);
+  for (let k = firstChip; ; k++){                      // zone chips mark where each stretch of the painting begins
+    const startL = k * ZONE_LEN + 1;
+    if (startL > maxL) break;
+    const y = mapWorldY(startL) - mapSp() * 0.5 - mapScroll;
+    if (y < -r * 2) continue;
+    if (y > H + r * 2) break;
+    const z = ZONES[k % ZONES.length];
+    const label = z.name + " · " + startL + "–" + (startL + ZONE_LEN - 1);
     ctx.font = "600 " + Math.round(r * 0.5) + "px \"Baloo 2\", sans-serif";
     const ico = IMGS[z.icon], ih = r * 0.78;
     const iw = ico && ico.width ? ih * ico.width / ico.height : 0;
     const tw = ctx.measureText(label).width + r * 0.9 + (iw ? iw + r * 0.22 : 0);
-    roundRectPath(W / 2 - tw / 2, y - r * 0.55, tw, r * 1.1, r * 0.55);
+    const left = mapNodeX(startL) > W / 2;             // tuck the chip into the side the trail isn't on
+    const cxp = left ? 10 + tw / 2 : W - 10 - tw / 2;
+    roundRectPath(cxp - tw / 2, y - r * 0.55, tw, r * 1.1, r * 0.55);
     ctx.fillStyle = "rgba(10,32,80,0.45)"; ctx.fill();
     ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 1; ctx.stroke();
-    let tx = W / 2 - tw / 2 + r * 0.45;
+    let tx = cxp - tw / 2 + r * 0.45;
     if (iw){ ctx.drawImage(ico, tx, y - ih / 2, iw, ih); tx += iw + r * 0.22; }
     ctx.fillStyle = "#fff"; ctx.textAlign = "left";
     ctx.fillText(label, tx, y + 1);
@@ -1552,7 +1594,7 @@ canvas.addEventListener("pointermove", e => {
     if (!mapDragging) return;
     const dy = e.clientY - mapDragStartY;
     if (Math.abs(dy) > 8) mapMoved = true;
-    mapScroll = Math.max(0, Math.min(mapMaxScroll(), mapScrollStart - dy));
+    mapScroll = Math.max(mapMinScroll(), Math.min(mapMaxScroll(), mapScrollStart - dy));   // content follows the finger
     return;
   }
   if (state !== "drag") return;
@@ -1874,8 +1916,9 @@ function afterSettle(){
     for (let i = 0; i < 3; i++) spans[i].classList.toggle("on", i < stars);
     starsByLevel[level] = Math.max(starsByLevel[level] || 0, stars);
     store.set("mermaidDots.stars", JSON.stringify(starsByLevel));
-    const zoneDone = level % 10 === 0;
-    $("winTitle").textContent = zoneDone ? "Zone Complete!" : "Level Complete!";
+    const chapterDone = level % CHAPTER_LEN === 0, zoneDone = chapterDone || level % ZONE_LEN === 0;
+    $("winTitle").textContent = chapterDone ? "Chapter Complete!" : zoneDone ? "Zone Complete!" : "Level Complete!";
+    $("nextBtn").textContent = chapterDone ? "On to the next world ➜" : "Continue ➜";
     if (zoneDone){ stopWinAnim(); stopWinVid(); $("winImg").src = ASSETS.kingNerio; }
     else { startWinAnim(); startWinVid(); }
     const wr = $("winRescue");
@@ -1887,6 +1930,16 @@ function afterSettle(){
         `<img class="rTank" src="${ASSETS.btnAqua}" alt=""></span>` +
         `<span class="rTxt">${rescuedThisLevel === 1 ? "1 friend" : rescuedThisLevel + " friends"} rescued for your aquarium!</span>`;
     } else wr.style.display = "none";
+    if (chapterDone){      // the whole ocean, done: King Nerio, a whirlpool, and a big splashy send-off
+      wr.style.display = "";
+      if (!rescuedThisLevel) wr.innerHTML = "";
+      wr.insertAdjacentHTML("afterbegin", `<span class="rTxt">You swam all the way down to the Whirlpool! King Nerio says a whole new world is waiting for you...</span>`);
+      for (let i = 1; i <= 6; i++) setTimeout(() => {
+        celebrate();
+        burstBubbles(W * (0.15 + 0.7 * Math.random()), H * (0.25 + 0.5 * Math.random()));
+        tone(520 + i * 90, 0.3, "triangle", 0.16);
+      }, 500 + i * 650);
+    }
     setTimeout(() => {
       $("winOverlay").classList.remove("hidden");
       $("btns").classList.add("menuHide");   // celebration owns the screen —
@@ -1999,14 +2052,8 @@ function render(t){
     drawEffects();
     return;
   }
-  // painted zone background
-  const bg = IMGS[zone.bg];
-  if (bg && bg.width){
-    const { s, ox, oy } = coverRect(bg);
-    ctx.drawImage(bg, ox, oy, bg.width * s, bg.height * s);
-  } else {
-    ctx.fillStyle = "#123a6e"; ctx.fillRect(0, 0, W, H);
-  }
+  // the painted journey, windowed to this level's depth
+  drawBackdrop(ctx);
 
   // ambient rising bubbles (the paintings carry the atmosphere; this just adds life)
   ctx.fillStyle = "rgba(255,255,255,0.09)";
@@ -2268,7 +2315,7 @@ function openAquarium(){
     .map(t => `<span class="aquaChip"><img src="${ASSETS[t.img]}" alt="${t.name}">${rescued[t.key]}</span>`)
     .join("");
   $("aquaMsg").textContent = total === 0
-    ? "Your aquarium is empty! From level 8, swipe Morgana's bubbled friends into your line to rescue them — they'll swim here forever."
+    ? "Your aquarium is empty! From level 5, swipe Morgana's bubbled friends into your line to rescue them — they'll swim here forever."
     : total + (total === 1 ? " rescued friend lives" : " rescued friends live") + " here. Keep popping bubbles!";
   // show up to 20 swimmers, randomly sampled
   while (entries.length > 20) entries.splice(Math.floor(Math.random() * entries.length), 1);
