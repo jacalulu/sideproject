@@ -52,7 +52,14 @@ confetti) and are part of each creature's identity — don't reassign them.
   the tube flashes gold and a star caps its end.
 - Three goals: the units compact and wrap 2-over-1 (`.g3`; `mode-row`
   and `mode-stack` alternates exist behind classes).
-- Bottom bar: four glass chips with lowercase labels, centered.
+- Bottom bar: glass chips with lowercase labels, centered, and only the ones
+  that make sense on this screen (`setBar()`): the map shows aquarium +
+  sound; a level shows pause + aquarium. Everything else lives in the pause
+  card, so nothing a small finger brushes can end a level.
+- Board mechanics are candy stickers like the creatures (`piece-*.webp`),
+  baked through the same sprite path (`MECH` table) so goal chips and
+  flyers treat them exactly like friends. A jelly-charged friend wears a
+  bright ring plus a jelly badge — a glow alone vanished on violet water.
 - Radii scale: pills `999`, cards `32`, capsule `26`, tiles/HUD `22`,
   progress bars `4`.
 - The title screen shows **no chrome** — HUD and button bar appear after Play.
