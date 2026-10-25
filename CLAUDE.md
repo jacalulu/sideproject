@@ -1,7 +1,7 @@
 # Mermaid Dots — project guide for Claude
 
 A kid-friendly dot-connecting puzzle game. The entire game is ONE
-self-contained ~3.7MB HTML file: `public/mermaid-dots/index.html` (assets
+self-contained ~4.3MB HTML file: `public/mermaid-dots/index.html` (assets
 embedded as data URLs; loose originals in `public/mermaid-dots/assets/`).
 It ships three ways from this repo:
 
@@ -31,6 +31,12 @@ It ships three ways from this repo:
 - The art is made with `tools/journey/` (read its README first: every
   rule in it came from a failed run). Generate with GPT-5.4 Image via
   OpenRouter; test a few hard steps before a bulk run.
+
+## Tuning difficulty
+
+- Never guess wave budgets: run `tools/playtest/` (a bot that plays the
+  real game code; see its README) and keep each zone's mechanic levels
+  within noise of its breather levels. A `nomove` stall is a deadlock bug.
 
 ## Versioning
 

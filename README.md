@@ -69,7 +69,32 @@ Pages deploy at `/privacy.html`.
 - From level 5, some friends are trapped in bubbles — swipe a bubbled friend
   as part of your matching line to pop it free (a loop rescues every bubbled
   friend of that kind on the board). Rescued friends swim to your aquarium.
-- Run out of waves? Just try again — no penalty, ever.
+- Run out of waves? Just try again — no penalty, ever. Miss the same level
+  twice and **Finn's gift** offers 5 more waves on the same board.
+- Every zone brings something new to the board, introduced by a one-picture
+  story card the first time it appears:
+  - **Sand** (Coral Cove, 26–50): clear friends on or next to a sandy tile
+    to sweep it away.
+  - **Anchors** (Kelp Forest, 51–75): they can't join a line; they sink a
+    row every wave, faster if you clear underneath, and count when they
+    reach the bottom.
+  - **Crates** (Shipwreck Bay, 76–100): a line right next to a crate
+    cracks it open.
+  - **Oysters** (Pearl Palace, 101–125): two neighbouring clears, one to
+    wake it and one for its pearl.
+  - **Jelly power** (from Jellyfish Grove, 126+): a line of 6+ leaves a
+    glowing jelly friend; using it bursts the 3×3 around it.
+  - Twilight Deep and Starlight Trench mix two of these per level. Every
+    5th level of a zone is a breather with no mechanic.
+- **Pause** (bottom left during a level) holds keep playing, start over,
+  adventure map and sound, so a stray tap can't end a level.
+- A first-time win plays that level's **fun fact** (with a "Maybe later"
+  skip) before the map.
+- **My Aquarium**: the tank where rescued and unlocked friends swim (tap
+  one to tickle it); a **sticker album** of 16 friends, two per zone,
+  unlocked at each zone's level 12 and 25; and a **shop** of 8 decorations
+  bought with stars. The aquarium button toggles it; a dot on the button
+  means something new.
 
 **Infinite levels.** Levels are generated from a seeded difficulty curve, so
 level N is always the same puzzle and there is no last level. The curve ramps
@@ -85,6 +110,14 @@ over roughly the first 60 levels and then gently plateaus:
 
 Within each 5-level block difficulty rises then resets, so a tough level is
 followed by a breather. Every level is winnable and retries are always free.
+
+Mechanic levels get extra waves for each piece, measured rather than
+guessed: a greedy bot plays the real game code on every level 1–200 (with
+unlimited waves, to measure what each sand tile, anchor, crate and oyster
+actually costs), and the budgets are set so mechanic levels win about as
+often as their zone's breather levels. The same runs proved no level can
+deadlock (two dead ends found this way were fixed: anchors stuck over
+unmatched friends, and lone sand tiles).
 
 **The cast (the "Ocean Princess" theme).** Original characters, generated
 with Gemini Nano Banana in a painterly bioluminescent style and embedded in
@@ -131,10 +164,11 @@ background-keyed — see `assets/ico-*.webp`, `assets/zone-*.webp`), and
 every character sticker idles with a subtle CSS "alive" float, tuned per
 personality (Finn flutters, King Nerio barely sways). All images
 are WebP embedded as data URLs and the Fredoka font (OFL license) is inlined:
-the whole game is still ONE self-contained ~3.7 MB HTML file with no
+the whole game is still ONE self-contained ~4.3 MB HTML file with no
 dependencies. Progress, chosen mermaid, and sound setting persist in the
-browser.
+browser; in the iOS app every save is also mirrored to native storage
+(Capacitor Preferences) and reconciled on launch, so iOS clearing the web
+view's storage can't reset her progress. Haptics use Capacitor Haptics.
 
-The loose asset files live in `public/mermaid-dots/assets/`; the build that
-embeds them into `index.html` is a small script — regenerate by replacing an
-asset and re-inlining it as a base64 data URL in the `ASSETS` object.
+The loose asset files live in `public/mermaid-dots/assets/`; embed or
+replace one with `python3 tools/embed_assets.py public/mermaid-dots/index.html key=path`.

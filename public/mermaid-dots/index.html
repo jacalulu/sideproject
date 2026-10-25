@@ -578,7 +578,7 @@
     <img class="chara heroImg" id="loseImg" alt="Finn">
     <h2>So close!</h2>
     <p>Out of waves — but Finn believes in you. Mermaids never give up!</p>
-    <button class="btn" id="helpBtn" style="display:none">Finn's gift: 5 more waves! <img class="btnIco" id="helpIco" alt=""></button>
+    <button class="btn" id="helpBtn" style="display:none">Finn's gift: +5 waves <img class="btnIco" id="helpIco" alt=""></button>
     <button class="btn blue" id="againBtn">Try Again <img class="btnIco" id="againIco" alt=""></button>
     <button class="btn" id="loseMapBtn"><img class="btnIco" id="loseMapIco" alt=""> Adventure Map</button>
   </div>
@@ -850,9 +850,11 @@ function levelConfig(n){
   const goals = shuffled.slice(0, creatureGoals).map(t => ({ type: t, left: amount, total: amount }));
   for (const k of mechGoals) goals.push({ type: MECHK[k], left: mech[k], total: mech[k] });
   const total = amount * creatureGoals;
-  // every mechanic costs waves of its own: sand ~1 per 2.5 tiles, an anchor ~2.4, a crate ~0.7, an oyster ~1.4
-  const mechMoves = Math.ceil(mech.sand / 2.5 + mech.anchor * 2.4 + mech.crate * 0.7 + mech.oyster * 1.4);
-  const cap = mechGoals.length ? 52 : 45;
+  // every mechanic costs waves of its own, measured by a bot playing all 200 levels
+  // with unlimited waves, then raised until mechanic levels win about as often as their
+  // zone's breather levels: 0.85 per sand tile, 3.2 per anchor, 1.25 per crate, 2.2 per oyster
+  const mechMoves = Math.ceil(mech.sand * 0.85 + mech.anchor * 3.2 + mech.crate * 1.25 + mech.oyster * 2.2);
+  const cap = mechGoals.length ? 60 : 45;
   const moves = Math.max(15, Math.min(cap, Math.ceil(total / 2.2) + Math.round(10 - 6 * d - 2 * late) + traps + mechMoves));
   return { active, goals, moves, traps, size, zone: zoneForLevel(n), ...mech };
 }
