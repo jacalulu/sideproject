@@ -506,6 +506,30 @@
   .heroStack .chara { animation:none; }  /* the flipbook frames already dance */
   .heroStack img { height:232px; display:block; }
   #winImg2 { position:absolute; left:0; top:0; opacity:0; transition:opacity .09s linear; }
+
+  /* ---- FLAT PASS (visual quick wins, before the new identity) ----
+     Solid surfaces, no blur, no gradients, no drop shadows on the HUD,
+     mission box and button bar. The board is a solid light panel tinted per
+     zone (--boardBg, set by zoneTint) and the HUD pills share it. */
+  .hudBox.glass { background:var(--boardBg, #eef5f7); color:var(--ink);
+    backdrop-filter:none; -webkit-backdrop-filter:none;
+    border:none; box-shadow:none; text-shadow:none; }
+  .hudBox.glass .zone { color:var(--ink-soft); opacity:1; }
+  #movesBox.low { background:var(--coral-deep); color:#fff; border:none; }
+  #movesBox.low .zone { color:#fff; }
+  #goalsBox { background:var(--boardBg, #eef5f7);
+    backdrop-filter:none; -webkit-backdrop-filter:none;
+    border:none; box-shadow:none; }
+  .nestShell, .buddy, .cap img, .iconBtn img { filter:none; }
+  .tclip { background:rgba(22,70,114,.10); border:none; box-shadow:none; }
+  .juice::before { display:none; }
+  .goalNum { text-shadow:none; }
+  .goalChip.done .goalNum { text-shadow:none; }
+  .iconBtn .chip { background:var(--boardBg, #eef5f7); border:none; box-shadow:none;
+    backdrop-filter:none; -webkit-backdrop-filter:none; }
+  .iconBtn span.lbl { text-shadow:none; }
+  /* the pause sticker is pale lavender: darken it so it reads on the light chip */
+  #pauseBtn img { filter:brightness(.5) saturate(1.6); }
 </style>
 </head>
 <body>
@@ -960,17 +984,12 @@ function bakeSprites(){
     c.scale(DPR, DPR); c.translate(SPR / 2, SPR / 2);
     const R = cell * 0.44;
 
-    // just the creature, resting on a soft contact shadow — no chrome
+    // just the creature, flat: no shadow, no chrome
     const im = IMGS[t.img];
     if (im && im.width){
       const box = cell * (t.box || 0.64);
       const s = Math.min(box / im.width, box / im.height);
       const w = im.width * s, h = im.height * s;
-      const sh = c.createRadialGradient(0, h * 0.42, 0, 0, h * 0.42, w * 0.42);
-      sh.addColorStop(0, "rgba(6,26,58,0.30)");
-      sh.addColorStop(1, "rgba(6,26,58,0)");
-      c.fillStyle = sh;
-      c.beginPath(); c.ellipse(0, h * 0.42, w * 0.42, w * 0.16, 0, 0, TAU); c.fill();
       c.drawImage(im, -w / 2, -h / 2, w, h);
     }
     sprites[t.key] = cv;
@@ -999,14 +1018,17 @@ function bakeSprites(){
   bg.addColorStop(1, "rgba(185,155,245,0.30)");
   b.fillStyle = bg;
   b.beginPath(); b.arc(0, 0, B, 0, TAU); b.fill();
-  b.strokeStyle = "rgba(235,222,255,0.8)"; b.lineWidth = 1.5; b.stroke();
-  b.strokeStyle = "rgba(255,255,255,0.75)"; b.lineWidth = 2; b.lineCap = "round";
+  b.strokeStyle = "#9a7ce6"; b.lineWidth = 2.5; b.stroke();       // reads on the light board
+  b.strokeStyle = "rgba(154,124,230,0.7)"; b.lineWidth = 2.5; b.lineCap = "round";
   b.beginPath(); b.arc(0, 0, B * 0.78, -2.35, -1.65); b.stroke();
   bubbleSprite = bv;
 }
 
-/* ---------- frosted glass board panel ---------- */
-let frost = null;
+/* ---------- board panel + gameplay backdrop ----------
+   The board is a solid light panel (boardColor, per zone). Around it the
+   journey painting is heavily blurred and dimmed so it sets the mood
+   without competing with the pieces. Both are baked once per layout. */
+let frost = null, backdropSoft = null, boardColor = "#eef5f7";
 const FROST_PAD = 14, FROST_R = 26;
 
 function makeFrost(){
@@ -1038,6 +1060,20 @@ function makeFrost(){
   oc.fillStyle = "rgba(10,32,72,0.24)";
   oc.fillRect(0, 0, w, h);
   frost = { canvas: out, x, y, w, h };
+  // the whole-screen backdrop, blurred (shrink, then enlarge) and dimmed
+  const s1 = document.createElement("canvas");
+  s1.width = Math.max(2, Math.round(W / 16)); s1.height = Math.max(2, Math.round(H / 16));
+  const s1c = s1.getContext("2d"); s1c.scale(s1.width / W, s1.height / H); drawBackdrop(s1c);
+  const s2 = document.createElement("canvas");
+  s2.width = Math.max(2, Math.round(W / 5)); s2.height = Math.max(2, Math.round(H / 5));
+  const s2c = s2.getContext("2d"); s2c.imageSmoothingQuality = "high"; s2c.drawImage(s1, 0, 0, s2.width, s2.height);
+  const bd = document.createElement("canvas");
+  bd.width = Math.ceil(W * DPR); bd.height = Math.ceil(H * DPR);
+  const bdc = bd.getContext("2d"); bdc.scale(DPR, DPR);
+  bdc.imageSmoothingEnabled = true; bdc.imageSmoothingQuality = "high";
+  bdc.drawImage(s2, 0, 0, W, H);
+  bdc.fillStyle = "rgba(6,18,42,0.38)"; bdc.fillRect(0, 0, W, H);
+  backdropSoft = bd;
 }
 
 /* ---------- adaptive glass tint ----------
@@ -1075,6 +1111,8 @@ function zoneTint(){
     bs.setProperty("--tintGlow", `hsla(${hue}, 60%, 68%, .22)`);
     bs.setProperty("--cardTop",  `hsla(${hue}, 55%, 91%, .70)`);
     bs.setProperty("--cardBot",  `hsla(${hue}, 58%, 82%, .52)`);
+    boardColor = `hsl(${hue}, 40%, 94%)`;     // solid light board: max contrast for the pieces
+    bs.setProperty("--boardBg", boardColor);
   } catch(e){}                                // tainted canvas etc: keep defaults
 }
 
@@ -2511,8 +2549,9 @@ function render(t){
     drawEffects();
     return;
   }
-  // the painted journey, windowed to this level's depth
-  drawBackdrop(ctx);
+  // the painted journey, windowed to this level's depth (soft and dim behind a level)
+  if (backdropSoft && state !== "menu") ctx.drawImage(backdropSoft, 0, 0, W, H);
+  else drawBackdrop(ctx);
 
   // ambient rising bubbles (the paintings carry the atmosphere; this just adds life)
   ctx.fillStyle = "rgba(255,255,255,0.09)";
@@ -2523,16 +2562,11 @@ function render(t){
   }
 
   if (state !== "menu" && !aquariumOpen && !introUp()){
-    // frosted glass board panel
+    // solid board panel
     if (frost){
-      ctx.save();
+      ctx.fillStyle = boardColor;
       roundRectPath(frost.x, frost.y, frost.w, frost.h, FROST_R);
-      ctx.clip();
-      ctx.drawImage(frost.canvas, frost.x, frost.y, frost.w, frost.h);
-      ctx.restore();
-      ctx.strokeStyle = "rgba(255,255,255,0.28)"; ctx.lineWidth = 1;
-      roundRectPath(frost.x, frost.y, frost.w, frost.h, FROST_R);
-      ctx.stroke();
+      ctx.fill();
     }
 
     // sandy floor tiles sit under the friends
@@ -2543,24 +2577,17 @@ function render(t){
         if (sand[r] && sand[r][c]) ctx.drawImage(sandIm, cx(c) - sw / 2, cy(r) - sw / 2, sw, sw);
     }
 
-    // connection line: color glow, white casing, then a solid color core
+    // connection line: one flat, solid stroke in the friend's colour
     if (state === "drag" && path.length){
       const type = grid[path[0].r][path[0].c].type;
       ctx.lineCap = "round"; ctx.lineJoin = "round";
-      for (const [lw, alpha, col] of [
-        [cell * 0.34, 0.25, type.main],
-        [cell * 0.19, 0.9, "#ffffff"],
-        [cell * 0.115, 1, type.main]]){
-        ctx.lineWidth = lw;
-        ctx.strokeStyle = col;
-        ctx.globalAlpha = alpha;
-        ctx.beginPath();
-        ctx.moveTo(cx(path[0].c), cy(path[0].r));
-        for (let i = 1; i < path.length; i++) ctx.lineTo(cx(path[i].c), cy(path[i].r));
-        if (pointerPos && !loopClosed) ctx.lineTo(pointerPos.x, pointerPos.y);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
+      ctx.lineWidth = cell * 0.15;
+      ctx.strokeStyle = type.main;
+      ctx.beginPath();
+      ctx.moveTo(cx(path[0].c), cy(path[0].r));
+      for (let i = 1; i < path.length; i++) ctx.lineTo(cx(path[i].c), cy(path[i].r));
+      if (pointerPos && !loopClosed) ctx.lineTo(pointerPos.x, pointerPos.y);
+      ctx.stroke();
     }
 
     // tokens
@@ -2594,8 +2621,7 @@ function render(t){
         if (d.bomb){           // a jelly-charged friend: a bright pulsing ring that reads on any water
           const pu = 1 + 0.07 * Math.sin(t * 5 + c);
           ctx.save();
-          ctx.shadowColor = "#d9b8ff"; ctx.shadowBlur = 14;
-          ctx.strokeStyle = "rgba(236,220,255,0.95)"; ctx.lineWidth = 3.5;
+          ctx.strokeStyle = "#9a62f0"; ctx.lineWidth = 3.5;
           ctx.beginPath(); ctx.arc(x, y, cell * 0.47 * pu, 0, TAU); ctx.stroke();
           ctx.restore();
         }
@@ -2620,7 +2646,7 @@ function render(t){
     if (state === "idle" && hintKind === "square" && hintCells){
       ctx.save();
       ctx.globalAlpha = 0.45 + 0.3 * Math.sin(t * 4);
-      ctx.strokeStyle = "#ffffff";
+      ctx.strokeStyle = "#164672";
       ctx.lineWidth = 4; ctx.lineCap = "round"; ctx.lineJoin = "round";
       ctx.setLineDash([9, 13]);
       ctx.lineDashOffset = -t * 36;

@@ -1,7 +1,18 @@
 # Mermaid Dots — Design System
 
 One page that defines every visual decision in the game, so new work stays
-consistent. The rule of thumb: **the world is painterly, the interface is
+consistent.
+
+> **In transition (Nov 2026): flat pass.** A new visual identity is being
+> designed (flat, friendly, faces kept but drawn flat; inspired by the
+> restraint of Two Dots, not copied). As a first step the level screen
+> went flat: no shadows under pieces; a solid light board tinted per zone
+> (`--boardBg` / `boardColor`, from `zoneTint()`); HUD pills, mission box
+> and button chips are solid and flat (no blur, gradients or drop
+> shadows); the connection line is one flat stroke; the painting behind a
+> level is blurred and dimmed (`backdropSoft`). Dialog cards and the map
+> are unchanged for now. Where this page says "sea glass" for the HUD or
+> "frost" for the board, the flat pass wins. The rule of thumb: **the world is painterly, the interface is
 sea glass, the stickers are candy.**
 
 ## 1. The three material layers
