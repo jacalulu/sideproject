@@ -8,7 +8,7 @@ const [html, from, to, runs] = [process.argv[2], +process.argv[3], +process.argv
   const errs = []; p.on("pageerror", e => errs.push(e.message));
   await p.goto('file://' + html); await p.waitForTimeout(2500);
   await p.evaluate(() => { document.getElementById('playBtn').closest('.overlay').classList.add('hidden');
-    for (const k of ["seenMorgana","seenSand","seenAnchor","seenCrate","seenOyster","seenJelly"]) localStorage.setItem("mermaidDots."+k,"1"); });
+    for (const k of ["seenMorgana","seenSand","seenAnchor","seenCrate","seenOyster","seenJelly","seenInk"]) localStorage.setItem("mermaidDots."+k,"1"); });
   const res = await p.evaluate(([from, to, runs, UNL]) => {
     const settle = () => { let g = 0; while (state === "fall" && g++ < 60){ for (const row of grid) for (const d of row) if (d){ d.yOff = 0; d.vy = 0; } afterSettle(); } };
     const score = (cells, loop) => {
@@ -29,7 +29,7 @@ const [html, from, to, runs] = [process.argv[2], +process.argv[3], +process.argv
           const rr = q.r + dr, cc = q.c + dc;
           if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
           const d = grid[rr][cc];
-          if (d && (d.kind === "crate" || d.kind === "oyster") && need[d.kind] && !hit.has(rr + "," + cc)){ hit.add(rr + "," + cc); sc += 2.6; }
+          if (d && (d.kind === "crate" || d.kind === "oyster" || d.kind === "ink") && need[d.kind] && !hit.has(rr + "," + cc)){ hit.add(rr + "," + cc); sc += 2.6; }
         }
         if (need.anchor) for (let r = 0; r < q.r; r++) if (grid[r][q.c] && grid[r][q.c].kind === "anchor") sc += 1.6 + q.r * 0.15;
       }
@@ -80,7 +80,7 @@ const [html, from, to, runs] = [process.argv[2], +process.argv[3], +process.argv
       }
       const c = levelConfig(L);
       out.push({ L, wins, runs: played, avgLeft: wins ? +(left / wins).toFixed(1) : null, moves: c.moves, why,
-                 mech: ["sand","anchor","crate","oyster"].filter(x => c[x]).map(x => x + ":" + c[x]).join(" ") + (c.bombs ? " +jelly" : "") });
+                 mech: ["sand","anchor","crate","oyster","ink"].filter(x => c[x]).map(x => x + ":" + c[x]).join(" ") + (c.bombs ? " +jelly" : "") });
     }
     return out;
   }, [from, to, runs, !!process.env.UNL]);

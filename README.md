@@ -65,6 +65,9 @@ Pages deploy at `/privacy.html`.
   to the next level on the trail.
 - Drag a line between 2 or more matching sea friends to collect them.
 - Close a **loop** (like a square) to splash away every friend of that kind!
+  The friends that drop in next are never that kind, so one loop sets up
+  the next. A bigger loop that wraps around other pieces bursts everything
+  inside it like a bubble.
 - Collect the friends shown at the top before the wave counter 🌊 runs out.
 - From level 5, some friends are trapped in bubbles — swipe a bubbled friend
   as part of your matching line to pop it free (a loop rescues every bubbled
@@ -84,8 +87,15 @@ Pages deploy at `/privacy.html`.
     wake it and one for its pearl.
   - **Jelly power** (from Jellyfish Grove, 126+): a line of 6+ leaves a
     glowing jelly friend; using it bursts the 3×3 around it.
+  - **Morgana's ink** (Twilight Deep and Starlight Trench, 151–200): a
+    clear next to an ink blot wipes it away; a wave that touches no ink
+    lets it creep onto a neighbouring friend (never past a quarter of the
+    board).
   - Twilight Deep and Starlight Trench mix two of these per level. Every
     5th level of a zone is a breather with no mechanic.
+- **Stars** are the challenge, not the gate: finishing with 40% of the
+  waves left earns 3 stars, 20% earns 2. That means out-playing the
+  playtest bot, which wins with about a quarter left.
 - **Pause** (bottom left during a level) holds keep playing, start over,
   adventure map and sound, so a stray tap can't end a level.
 - A first-time win plays that level's **fun fact** (with a "Maybe later"
@@ -113,7 +123,8 @@ followed by a breather. Every level is winnable and retries are always free.
 
 Mechanic levels get extra waves for each piece, measured rather than
 guessed: a greedy bot plays the real game code on every level 1–200 (with
-unlimited waves, to measure what each sand tile, anchor, crate and oyster
+unlimited waves, to measure what each sand tile, anchor, crate, oyster
+and ink blot
 actually costs), and the budgets are set so mechanic levels win about as
 often as their zone's breather levels. The same runs proved no level can
 deadlock (two dead ends found this way were fixed: anchors stuck over

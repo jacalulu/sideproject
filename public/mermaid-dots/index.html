@@ -653,6 +653,8 @@ const TYPES = [
 // One chapter = 200 levels = ONE continuous painting (a dive from the sunlit surface to the starlit trench),
 // told in 8 zones of 25 levels. The zones only name the stretch of painting you're in; there are no seams.
 const CHAPTER_LEN = 200, ZONE_LEN = 25;
+// waves each starting ink blot costs (measured with tools/playtest, like the other mechanic costs)
+const INK_COST = 1.8;
 // zone mechanics: each zone brings one new thing to the board (and mixes the old ones back in)
 const MECH = [
   { key:"sand",   name:"Sand",       img:"pSand",         main:"#e9c27c", dark:"#c99a4a", box:0.86 },
@@ -662,6 +664,7 @@ const MECH = [
   { key:"crateCracked", name:"Crate",  img:"pCrateCracked", main:"#c08347", dark:"#8a5626", box:0.80 },
   { key:"oysterOpen",   name:"Oyster", img:"pOysterOpen",   main:"#f4a7c6", dark:"#d4729b", box:0.78 },
   { key:"jelly",  name:"Jelly",      img:"pJelly",        main:"#b58cff", dark:"#8a5ee0", box:0.62 },
+  { key:"ink",    name:"Ink",        img:"pInk",          main:"#5a3f94", dark:"#34225e", box:0.80 },
 ];
 const MECHK = Object.fromEntries(MECH.map(m => [m.key, m]));
 const ZONES = [
@@ -782,6 +785,27 @@ const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce
 // where relative video URLs resolve into the bundled assets
 const CAN_MEDIA = location.protocol.startsWith("http") || location.protocol === "capacitor:";
 
+/* Morgana's ink blot, drawn in code (no generated art yet): a round inky splat with drips,
+   one glossy highlight and two little mischievous eyes. */
+ASSETS.pInk = (() => {
+  const S = 192, cv = document.createElement("canvas"); cv.width = cv.height = S;
+  const c = cv.getContext("2d");
+  const g = c.createRadialGradient(S * 0.42, S * 0.38, S * 0.05, S * 0.5, S * 0.52, S * 0.48);
+  g.addColorStop(0, "#7d5cc4"); g.addColorStop(0.6, "#4a2f86"); g.addColorStop(1, "#2a1752");
+  c.fillStyle = g;
+  c.beginPath(); c.arc(S * 0.5, S * 0.5, S * 0.33, 0, Math.PI * 2); c.fill();
+  for (const [x, y, rad] of [[0.2, 0.32, 0.1], [0.8, 0.36, 0.09], [0.26, 0.78, 0.09], [0.76, 0.76, 0.1], [0.5, 0.16, 0.08], [0.5, 0.86, 0.07]]){
+    c.beginPath(); c.arc(S * x, S * y, S * rad, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = "rgba(255,255,255,0.35)";
+  c.beginPath(); c.ellipse(S * 0.38, S * 0.32, S * 0.1, S * 0.05, -0.6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#fff";
+  for (const x of [0.41, 0.59]){ c.beginPath(); c.ellipse(S * x, S * 0.52, S * 0.055, S * 0.065, 0, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = "#1a0d33";
+  for (const x of [0.425, 0.605]){ c.beginPath(); c.arc(S * x, S * 0.535, S * 0.03, 0, Math.PI * 2); c.fill(); }
+  return cv.toDataURL("image/png");
+})();
+
 /* ---------- asset loading ---------- */
 const IMGS = {};
 const loadAll = Promise.all(Object.entries(ASSETS).map(([k, src]) =>
@@ -844,7 +868,7 @@ function levelConfig(n){
   const active = TYPES.slice(0, colors);
   const shuffled = active.slice().sort(() => rnd() - 0.5);
   const mech = zoneMechanics(n, size);
-  const mechGoals = ["sand", "anchor", "crate", "oyster"].filter(k => mech[k] > 0);
+  const mechGoals = ["sand", "anchor", "crate", "oyster", "ink"].filter(k => mech[k] > 0);
   const creatureGoals = mechGoals.length ? Math.max(1, Math.min(goalTypeCount, 3 - mechGoals.length)) : goalTypeCount;
   const amount = Math.round((11 + 14 * d + 3 * late + 4 * s) * (creatureGoals === 3 ? 0.75 : 1) * (mechGoals.length ? 0.8 : 1));
   const goals = shuffled.slice(0, creatureGoals).map(t => ({ type: t, left: amount, total: amount }));
@@ -853,7 +877,7 @@ function levelConfig(n){
   // every mechanic costs waves of its own, measured by a bot playing all 200 levels
   // with unlimited waves, then raised until mechanic levels win about as often as their
   // zone's breather levels: 0.85 per sand tile, 3.2 per anchor, 1.25 per crate, 2.2 per oyster
-  const mechMoves = Math.ceil(mech.sand * 0.85 + mech.anchor * 3.2 + mech.crate * 1.25 + mech.oyster * 2.2);
+  const mechMoves = Math.ceil(mech.sand * 0.85 + mech.anchor * 3.2 + mech.crate * 1.25 + mech.oyster * 2.2 + mech.ink * INK_COST);
   const cap = mechGoals.length ? 60 : 45;
   const moves = Math.max(15, Math.min(cap, Math.ceil(total / 2.2) + Math.round(10 - 6 * d - 2 * late) + traps + mechMoves));
   return { active, goals, moves, traps, size, zone: zoneForLevel(n), ...mech };
@@ -866,18 +890,23 @@ function zoneMechanics(n, size){
   const i = (n - 1) % CHAPTER_LEN, z = Math.floor(i / ZONE_LEN), zl = i % ZONE_LEN, k = zl % 5;
   const ramp = zl / (ZONE_LEN - 1);                    // 0 at a zone's first level -> 1 at its last
   const big = size >= 8 ? 1.25 : 1;
-  const m = { sand: 0, anchor: 0, crate: 0, oyster: 0, bombs: n > 125 };
+  const m = { sand: 0, anchor: 0, crate: 0, oyster: 0, ink: 0, bombs: n > 125 };
   const sand = () => Math.round((6 + 8 * ramp) * big), anchors = () => 2 + Math.round(2 * ramp),
-        crates = () => Math.round((5 + 6 * ramp) * big), oysters = () => Math.round((4 + 4 * ramp) * big);
+        crates = () => Math.round((5 + 6 * ramp) * big), oysters = () => Math.round((4 + 4 * ramp) * big),
+        inks = () => Math.round((3 + 3 * ramp) * big);
   if (z === 1){ if (k !== 4) m.sand = sand(); }
   else if (z === 2){ if (k !== 4) m.anchor = anchors(); if (k === 2) m.sand = Math.round(sand() * 0.6); }
   else if (z === 3){ if (k !== 4) m.crate = crates(); if (k === 1) m.anchor = 2; if (k === 3) m.sand = Math.round(sand() * 0.6); }
   else if (z === 4){ if (k !== 4) m.oyster = oysters(); if (k === 2) m.crate = Math.round(crates() * 0.6); }
   else if (z === 5){ [() => m.sand = sand(), () => m.anchor = anchors(), () => m.crate = crates(), () => m.oyster = oysters(), () => {}][k](); }
   else if (z >= 6){
-    const pairs = [["sand", "crate"], ["anchor", "oyster"], ["crate", "anchor"], ["oyster", "sand"], []][k];
-    const f = { sand, anchor: anchors, crate: crates, oyster: oysters };
-    for (const key of pairs) m[key] = Math.round(f[key]() * 0.75);
+    // Morgana's ink only arrives in the deep (Twilight Deep and Starlight Trench, levels 151-200):
+    // alone on a zone's first level so it can be learned, then paired with older pieces
+    const pairs = z === 6
+      ? [["ink"], ["sand", "crate"], ["ink", "anchor"], ["oyster", "sand"], []][k]
+      : [["ink", "crate"], ["anchor", "oyster"], ["ink", "sand"], ["crate", "anchor"], []][k];
+    const f = { sand, anchor: anchors, crate: crates, oyster: oysters, ink: inks };
+    for (const key of pairs) m[key] = Math.round(f[key]() * (pairs.length > 1 ? 0.75 : 1));
   }
   return m;
 }
@@ -1050,13 +1079,16 @@ function zoneTint(){
 }
 
 /* ---------- level lifecycle ---------- */
-function newDot(){
-  return { type: activeTypes[Math.floor(Math.random() * activeTypes.length)],
+// exclude: the kind a loop just splashed. Refills skip it (when there are 3+ kinds to choose
+// from), so one loop opens room for the next one instead of refilling the same color.
+function newDot(exclude){
+  const pool = exclude && activeTypes.length > 2 ? activeTypes.filter(t => t !== exclude) : activeTypes;
+  return { type: pool[Math.floor(Math.random() * pool.length)],
            yOff: 0, vy: 0, scale: 1, bounce: 0, wiggle: 0, trapped: false };
 }
 // special pieces have a kind and no creature type: they can't join a line
 function newPiece(kind){
-  return { type: null, kind, hp: kind === "oyster" ? 2 : 1,
+  return { type: null, kind, hp: kind === "oyster" ? 2 : 1,   // ink, crate: 1 hit
            yOff: 0, vy: 0, scale: 1, bounce: 0, wiggle: 0, trapped: false };
 }
 const isFriend = d => d && !d.kind;
@@ -1094,12 +1126,16 @@ function startLevel(){
     spots.splice(spots.indexOf(pick), 1);
     return pick;
   };
-  // crates and oysters sit below the top row so new friends can always drop in
-  for (const kind of ["crate", "oyster"])
+  // crates, oysters and ink sit below the top row so new friends can always drop in
+  const placed = {};
+  for (const kind of ["crate", "oyster", "ink"])
     for (let i = 0; i < levelCfg[kind]; i++){
       const at = take(1); if (!at) break;
       const pc = newPiece(kind); pc.yOff = grid[at[0]][at[1]].yOff; grid[at[0]][at[1]] = pc;
+      placed[kind] = (placed[kind] || 0) + 1;
     }
+  // the ink goal counts the ink actually on the board (it grows when ink spreads)
+  for (const g of goals) if (g.type.key === "ink") g.left = g.total = g.disp = placed.ink || 0;
   // anchors: a couple start near the top, the rest drift in as the board refills
   anchorsToSpawn = levelCfg.anchor;
   for (let i = 0; i < Math.min(2, levelCfg.anchor); i++){
@@ -1776,6 +1812,9 @@ const INTROS = [
   { when: c => c.bombs,   flag: "seenJelly",  img: "pJelly",        title: "Jelly power!",
     text: "Draw a line of <b>6 or more friends</b> and a glowing jelly appears. Use it in a line for a big <b>JELLY BOOM!</b>",
     btn: "Let's glow!" },
+  { when: c => c.ink,     flag: "seenInk",    img: "morgana",       title: "Morgana's ink!",
+    text: "Morgana is spilling ink in the deep! <b>Make a line next to the ink</b> to wipe it away. If you leave it alone, <b>it spreads</b>!",
+    btn: "Clean it up!" },
 ];
 function maybeIntro(){
   if (!levelCfg) return;
@@ -1919,13 +1958,20 @@ function clearPath(){
   buzz(loopClosed ? "loop" : "clear");
   const cleared = new Map();   // "r,c" -> {r, c}: every friend leaving the board this move
   const add = (r, c) => { if (isFriend(grid[r][c])) cleared.set(r + "," + c, { r, c }); };
+  const enclosed = loopClosed ? cellsInsideLoop(path) : [];
   if (loopClosed){
     // a loop splashes every free friend of this kind AND rescues every
     // bubbled one, anywhere on the board
     for (let r = 0; r < ROWS; r++)
       for (let c = 0; c < COLS; c++)
         if (grid[r][c] && grid[r][c].type === type) add(r, c);
-    toast("SPLASH! 🌊");
+    // whatever the loop wraps around bursts like a bubble, whatever its kind
+    for (const p of enclosed){
+      add(p.r, p.c);
+      burstBubbles(cx(p.c), cy(p.r));
+      rings.push({ x: cx(p.c), y: cy(p.r), r: cell * 0.3, max: cell * 0.9, t: 0, color: "#bfe9ff" });
+    }
+    toast(enclosed.length ? "BUBBLE BURST! 🫧" : "SPLASH! 🌊");
     splashSound();
     rings.push({ x: cx(path[0].c), y: cy(path[0].r), r: cell * 0.4, max: cell * COLS, t: 0, color: type.main });
   } else {
@@ -1939,8 +1985,9 @@ function clearPath(){
   const strike = (r, c) => {
     if (r < 0 || r >= ROWS || c < 0 || c >= COLS) return;
     const d = grid[r][c];
-    if (d && (d.kind === "crate" || d.kind === "oyster")) hits.set(r + "," + c, { r, c });
+    if (d && (d.kind === "crate" || d.kind === "oyster" || d.kind === "ink")) hits.set(r + "," + c, { r, c });
   };
+  for (const p of enclosed) strike(p.r, p.c);   // a crate, oyster or ink blot inside a loop takes a hit too
   const queue = [...cleared.values()].filter(p => grid[p.r][p.c].bomb), boomed = new Set();
   while (queue.length){
     const b = queue.pop(), bk = b.r + "," + b.c;
@@ -1992,7 +2039,9 @@ function clearPath(){
       for (let i = 0; i < 5; i++) particles.push({ x: cx(c), y: cy(r), vx: (Math.random() - 0.5) * 140, vy: -60 - Math.random() * 90,
         life: 0.6, t: 0, color: "#f1d08f", r: 2 + Math.random() * 3 });
     }
-  // crates break; oysters wake on the first hit and give up their pearl on the second
+  // touching Morgana's ink this wave keeps it from spreading
+  const inkTouched = [...hits.values()].some(h => grid[h.r][h.c].kind === "ink");
+  // crates break; oysters wake on the first hit and give up their pearl on the second; ink wipes away
   for (const h of hits.values()){
     const d = grid[h.r][h.c];
     if (--d.hp > 0){
@@ -2004,7 +2053,7 @@ function clearPath(){
     rings.push({ x: cx(h.c), y: cy(h.r), r: cell * 0.35, max: cell * 0.95, t: 0, color: MECHK[d.kind].main });
     credit(d.kind, cx(h.c), cy(h.r));
     if (sand[h.r][h.c]){ sand[h.r][h.c] = false; credit("sand", cx(h.c), cy(h.r)); }
-    tone(d.kind === "crate" ? 300 : 980, 0.14, "triangle", 0.18);
+    tone(d.kind === "crate" ? 300 : d.kind === "ink" ? 520 : 980, 0.14, "triangle", 0.18);
     grid[h.r][h.c] = null;
   }
   if (hits.size) buzz("clear");
@@ -2027,9 +2076,11 @@ function clearPath(){
     offGoalStreak = 0;
     remindGoals();
   }
+  if (levelCfg.ink && !inkTouched) spreadInk();
+  const splashed = loopClosed ? type : null;   // refills skip the kind a loop just splashed
   moves--;
   path = []; loopClosed = false;
-  applyGravity();
+  applyGravity(splashed);
   sinkAnchors();
   state = "fall";
   updateHud();
@@ -2060,7 +2111,7 @@ function creditGoals(progress){
   return helped;
 }
 
-function applyGravity(){
+function applyGravity(exclude){
   for (let c = 0; c < COLS; c++){
     const stack = [];
     for (let r = ROWS - 1; r >= 0; r--)
@@ -2073,7 +2124,7 @@ function applyGravity(){
         grid[r][c] = dot;
       } else {
         const d = anchorsToSpawn > 0 && anchorsOnBoard() < 2 && Math.random() < 0.18
-          ? (anchorsToSpawn--, newPiece("anchor")) : newDot();
+          ? (anchorsToSpawn--, newPiece("anchor")) : newDot(exclude);
         d.yOff = -(r + 1.5) * cell - boardY;
         grid[r][c] = d;
       }
@@ -2088,6 +2139,58 @@ function ensurePlayable(){
       for (let c = 0; c < COLS; c++)
         if (isFriend(grid[r][c])) grid[r][c].type = activeTypes[Math.floor(Math.random() * activeTypes.length)];
   }
+}
+
+/* cells strictly inside a closed loop (a 2x2 square wraps nothing; a 3x3 ring wraps its middle).
+   The cycle is the part of the path from the first visit of the closing cell to the end. Edges run
+   between neighbouring cell centres, so no other centre ever sits on one; a tiny offset keeps the
+   ray-cast test off the vertices. */
+function cellsInsideLoop(pth){
+  const last = pth[pth.length - 1];
+  const cyc = pth.slice(pth.findIndex(p => p.r === last.r && p.c === last.c), -1);
+  if (cyc.length < 4) return [];
+  const on = new Set(cyc.map(p => p.r + "," + p.c));
+  const out = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++){
+      if (on.has(r + "," + c) || !grid[r][c]) continue;
+      const y = r + 0.0137, x = c + 0.0071;
+      let inside = false;
+      for (let i = 0, j = cyc.length - 1; i < cyc.length; j = i++){
+        const a = cyc[i], b = cyc[j];
+        if ((a.r > y) !== (b.r > y) && x < (b.c - a.c) * (y - a.r) / (b.r - a.r) + a.c) inside = !inside;
+      }
+      if (inside) out.push({ r, c });
+    }
+  return out;
+}
+
+/* Morgana's ink: a wave that doesn't touch any ink lets it creep onto one friend next to it.
+   Capped at a quarter of the board so it can never choke every move. */
+function spreadInk(){
+  let ink = 0;
+  const near = [];
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++){
+      const d = grid[r][c];
+      if (!d || d.kind !== "ink") continue;
+      ink++;
+      for (const [dr, dc] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const rr = r + dr, cc = c + dc;
+        if (rr < 0 || rr >= ROWS || cc < 0 || cc >= COLS) continue;
+        const q = grid[rr][cc];
+        // never onto sand: the sand goal still needs that tile swept
+        if (isFriend(q) && !q.trapped && !q.bomb && !sand[rr][cc]) near.push({ r: rr, c: cc });
+      }
+    }
+  if (!ink || !near.length || ink >= Math.floor(ROWS * COLS / 4)) return;
+  const p = near[Math.floor(Math.random() * near.length)];
+  const blot = newPiece("ink"); blot.bounce = 1; blot.wiggle = 1;
+  grid[p.r][p.c] = blot;
+  const g = goals.find(g => g.type.key === "ink");
+  if (g){ g.left++; g.total++; g.disp = (g.disp ?? g.left - 1) + 1; }
+  tone(180, 0.22, "sawtooth", 0.08);
+  toast("Morgana's ink spreads! 🐙", true);
 }
 
 /* every 2×2 same-type square — the easiest loop a small hand can draw */
@@ -2252,7 +2355,9 @@ function afterSettle(){
     state = "over";
     winSound(); buzz("win");
     celebrate();
-    const s3 = Math.ceil(levelCfg.moves * 0.3), s2 = Math.ceil(levelCfg.moves * 0.12);
+    // finishing always counts; stars are the challenge. The playtest bot wins with ~26% of its waves
+    // left (median, 75th percentile ~37%), so 3 stars means out-playing it: loops, chains, bursts.
+    const s3 = Math.ceil(levelCfg.moves * 0.4), s2 = Math.ceil(levelCfg.moves * 0.2);
     const stars = moves >= s3 ? 3 : moves >= s2 ? 2 : 1;
     const spans = $("starRow").children;
     for (let i = 0; i < 3; i++) spans[i].classList.toggle("on", i < stars);
@@ -2498,8 +2603,7 @@ function render(t){
         ctx.translate(x, y);
         if (d.wiggle > 0.02) ctx.rotate(Math.sin(t * 22 + c * 2) * 0.22 * d.wiggle);
         ctx.scale(sx, sy);
-        const key = d.kind === "crate" ? "crate" : d.kind === "oyster" ? (d.hp < 2 ? "oysterOpen" : "oyster")
-                  : d.kind === "anchor" ? "anchor" : d.type.key;
+        const key = d.kind === "oyster" ? (d.hp < 2 ? "oysterOpen" : "oyster") : d.kind || d.type.key;
         ctx.drawImage(sprites[key], -SPR / 2, -SPR / 2, SPR, SPR);
         if (d.bomb){ const js = SPR * 1.0, jb = Math.sin(t * 3 + r) * SPR * 0.03;   // the baked sprite has padding: this is ~0.4 of a cell
           ctx.drawImage(sprites.jelly, -SPR * 0.12, -SPR * 0.82 + jb, js, js); }
