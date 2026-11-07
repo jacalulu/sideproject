@@ -20,17 +20,19 @@ It ships three ways from this repo:
   minimum SDK).
 - Android: PWA install from the Pages URL; no store build.
 
-## The journey (backgrounds)
+## Visual design
 
-- Levels come in 200-level *chapters*; each chapter is ONE continuous
-  painting (20 slices `bgJ00`..`bgJ19` in `ASSETS`), 8 named zones of 25
-  levels inside it. No hard edges inside a chapter; the only deliberate
-  break is the chapter boundary (splash line on the map, King Nerio's
-  "Chapter Complete!" at level 200). Levels 201+ replay chapter 1's art
-  until chapter 2 is painted.
-- The art is made with `tools/journey/` (read its README first: every
-  rule in it came from a failed run). Generate with GPT-5.4 Image via
-  OpenRouter; test a few hard steps before a bulk run.
+- The look is set by the **Mermaid Dots Style Guide** (a shared doc, linked
+  and summarised in `DESIGN.md`): flat shapes, simple faces, six bold friend
+  colours, friends floating on plain sand with no grid. Read it before any
+  visual change.
+- Board pieces, map scenery and the cast come from illustrated sprite
+  sheets made with `tools/stickers/` (read its README first: every rule in
+  it came from a failed run).
+- The map is drawn in code: flat colour bands per zone (8 zones of 25
+  levels per 200-level chapter) with animated stickers layered on top
+  (`drawSea`, `MAP_STICKERS`). The old outpainted journey painting and
+  `tools/journey/` are retired.
 
 ## Tuning difficulty
 

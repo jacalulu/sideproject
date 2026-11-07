@@ -1,126 +1,57 @@
-# Mermaid Dots — Design System
+# Mermaid Dots — Design
 
-One page that defines every visual decision in the game, so new work stays
-consistent.
+The full rules live in the shared **Mermaid Dots Style Guide**
+(https://claude.ai/artifact/GPE4pwNk6WJsEVxNofRgfZ), where Jaclyn and Claude
+edit and comment on them together. This page is the short version for the
+code. When the two disagree, the style guide wins; update this page to match.
 
-> **In transition (Nov 2026): flat pass.** A new visual identity is being
-> designed (flat, friendly, faces kept but drawn flat; inspired by the
-> restraint of Two Dots, not copied). As a first step the level screen
-> went flat: no shadows under pieces; a solid light board tinted per zone
-> (`--boardBg` / `boardColor`, from `zoneTint()`); HUD pills, mission box
-> and button chips are solid and flat (no blur, gradients or drop
-> shadows); the connection line is one flat stroke; the painting behind a
-> level is blurred and dimmed (`backdropSoft`). Dialog cards and the map
-> are unchanged for now. Where this page says "sea glass" for the HUD or
-> "frost" for the board, the flat pass wins. The rule of thumb: **the world is painterly, the interface is
-sea glass, the stickers are candy.**
+**The one-line rule:** a child must tell every piece apart in a glance, and
+nothing on screen competes with the friends.
 
-## 1. The three material layers
+## Principles
 
-| Layer | What it's for | Treatment |
-|---|---|---|
-| **World** | The 200-level journey painting, splash keyart, the named cast | Painterly, bioluminescent, dimensional (original Nano Banana art). Never flattened. |
-| **Sea glass** | Everything the player touches: HUD pills, dialog cards, button chips, board frost | Translucent glass with `backdrop-filter` blur. Dark water glass for HUD (white text), pale pearl glass for dialog cards (dark ink text). CSS-drawn, never baked into images. **Bubbles are gameplay, not decoration**: the only bubble on the board is Morgana's trap bubble — bubble always means "friend to rescue". |
-| **Candy stickers** | All generated icons and board pieces | Chunky, rounded, simplified shapes; soft gradients; one crisp glossy highlight; thin soft white sticker outline with a gentle glow. Generated from one master style (see §5). |
+1. Readable in a glance: each friend has its own colour *and* silhouette.
+2. Flat, always: no outlines, white sticker borders, shadows, gradients or gloss.
+3. Faces kept simple: two dot eyes and a small smile.
+4. No grid: friends float on plain sand. The board is always full, and a line
+   only joins direct neighbours.
+5. Room to breathe: a friend fills about 60–70% of its spacing.
+6. Quiet chrome: pills, mission bar, buttons, toasts and cards are shell white.
+7. Show, don't tell: pictures and motion teach; no instruction text on the board.
+8. Motion is the reward: pops, bounces, loops and a living map.
 
-## 2. Color tokens (`:root` in index.html)
+## Colour tokens (as used in `index.html`)
 
-| Token | Value | Role |
-|---|---|---|
-| `--coral` / `--coral-deep` | `#fb7aa8` / `#ef5590` | Primary action: main buttons, selection, highlights |
-| `--aqua` / `--aqua-deep` | `#4db4ec` / `#1e88c9` | Secondary action: alternate buttons, informational icons |
-| `--gold` | `#ffd166` | Stars and celebration ONLY — never for chrome |
-| `--ink` / `--ink-soft` | `#164672` / `#41719d` | Text on pearl surfaces (headings / body) |
+| Role | Hex | Where |
+| --- | --- | --- |
+| Starfish | `#F27D3A` | `TYPES` |
+| Shell | `#F0629E` | `TYPES` |
+| Fish | `#3473CC` | `TYPES` |
+| Turtle | `#63A852` | `TYPES` |
+| Octopus | `#9B62BA` | `TYPES` |
+| Pearl clam | `#F2BF2A` | `TYPES` |
+| Sand (play screen) | `#E8E0CB` | `SAND` |
+| Shell white (chrome) | `#FAF3EA` | `boardColor`, `--boardBg` |
+| Deep ink (text) | `#1F2D4F` | `--ink` |
+| Gold (stars only) | `#FFC94A` | map stars |
+| Trap bubble ring | `#6CC7E0` | `bakeSprites` |
 
-Per-creature colors live in the `TYPES` table (used for glows, rings,
-confetti) and are part of each creature's identity — don't reassign them.
+Map bands, three per zone from light to dark, are `SEA_BANDS`: lagoon
+turquoise, coral pink, kelp green, shipwreck teal, pearl lilac, jellyfish
+violet, twilight blue, starlight navy.
 
-## 3. Typography
+## Type
 
-- **Baloo 2** (600/700, inlined woff2) — display face: headings, buttons,
-  HUD, toasts, labels, canvas text on the map.
-- **Nunito** (600/800, inlined woff2) — body face: card paragraphs, fun
-  facts, any full sentence a child (or parent) reads.
-- Headings use `text-wrap:balance`; paragraphs use `text-wrap:pretty`.
-- Numbers that change (goal counts) use `font-variant-numeric:tabular-nums`.
+Baloo 2 (700–800) for numbers, labels and headings; Nunito for sentences a
+grown-up reads aloud. Counts are always numerals (`9/15`).
 
-## 4. Layout & spacing
+## Art
 
-- Top row: level pill left, wave counter right — **text only, no icons**;
-  the pills stay quiet so the mission box is the loudest element.
-- **The mission box** (`#goalsDock`) is a sea-glass capsule docked
-  directly above the grid, and its glass is **tinted per zone**:
-  `zoneTint()` samples the dominant hue of the backdrop window behind the current level (chroma-weighted
-  circular mean over a 24px thumbnail) and rebuilds the surface as
-  `hsla(hue, ~52%, 91%)` glass — rose in Coral Cove, deep blue in
-  Twilight — hue adapts, lightness never does, so ink text always reads. Each goal is a **shell nest + tide tube**: the creature
-  sits in a pearly shell cradle, and a CSS glass tube grows out of it,
-  filling with liquid in the creature's own `TYPES` color. Numbers stay
-  big and always numeric (`9/15`, never a checkmark) — counting practice
-  is a design goal. It IS the tutorial — no instructional text anywhere.
-  At level start the nests rock awake; on every catch the friend flies
-  into its shell, the shell gulps, and the tide sloshes up; on completion
-  the tube flashes gold and a star caps its end.
-- Three goals: the units compact and wrap 2-over-1 (`.g3`; `mode-row`
-  and `mode-stack` alternates exist behind classes).
-- Bottom bar: glass chips with lowercase labels, centered, and only the ones
-  that make sense on this screen (`setBar()`): the map shows aquarium +
-  sound; a level shows pause + aquarium. Everything else lives in the pause
-  card, so nothing a small finger brushes can end a level.
-- Board mechanics are candy stickers like the creatures (`piece-*.webp`),
-  baked through the same sprite path (`MECH` table) so goal chips and
-  flyers treat them exactly like friends. A jelly-charged friend wears a
-  bright ring plus a jelly badge — a glow alone vanished on violet water.
-- Radii scale: pills `999`, cards `32`, capsule `26`, tiles/HUD `22`,
-  progress bars `4`.
-- The title screen shows **no chrome** — HUD and button bar appear after Play.
-- Dialogs own the screen: HUD sits below the overlay backdrop (z 9 vs z 10)
-  and dims; only the button bar stays above (z 12).
-- Zone emblems appear on the map chips and the fact card, not in the HUD.
-- **The journey is one painting, not a set of scenes.** A chapter is 200
-  levels (`CHAPTER_LEN`) of one seamless vertical descent; zones (25 levels,
-  `ZONE_LEN`) are only *names* for stretches of it. Never add a hard edge
-  inside a chapter — the only deliberate hard break is the chapter boundary
-  (a white splash line on the map after level 200). Gameplay shows a window
-  into the painting (`bgF`, 0..1) so the backdrop drifts deeper each level.
-- The map's level 1 is at the TOP (the surface) and the trail dives
-  downward; dragging follows the finger. Zone chips tuck against the screen
-  edge opposite the trail so they never collide with level nodes.
-
-## 5. Generated art pipeline (sticker sheets)
-
-All icons/pieces come from **one master style prompt** anchored on
-`scratchpad` sheet `sheet-pieces.png` (the six board creatures):
-
-> chunky, rounded, simplified shapes; soft gradients; one crisp glossy
-> highlight; thin soft white sticker outline with gentle glow; palette
-> restricted to the tokens in §2 plus soft cream/lavender/seafoam.
-
-Process: generate a grid sticker sheet (Nano Banana Pro via OpenRouter,
-with the pieces sheet as a style reference image) → key out the fake
-checkerboard background by neutral-gray luminance → slice by connected
-components → downscale to ≤192px webp → copy to `assets/` → re-embed as
-base64 in the `ASSETS` object. Icons are flat stickers; button bodies,
-bubbles, and glass are drawn in CSS/canvas, never baked into the art.
-
-## 6. Motion
-
-- Every character sticker idles: one asymmetric keyframe (float + tiny
-  tilt + a breath), personality set per character via CSS vars
-  (`--d1` duration, `--rot` tilt, `--dy` travel). Finn flutters (2.4s),
-  King Nerio barely sways (8.6s). Characters sharing a screen get
-  negative `animation-delay`s so they never sync.
-- Transforms only (GPU-cheap); everything respects
-  `prefers-reduced-motion`.
-- Bigger moments escalate: flipbook (8 frames) → full-screen video.
-
-## 7. Iconography rules
-
-- No emoji in chrome, and no emoji as pointers/instructions. Emoji are
-  allowed only inside short celebratory toast copy (LOOP!, SPLASH!).
-- Every icon exists as `assets/ico-*.webp` (UI), `assets/zone-*.webp`
-  (zone emblems), or `assets/btn-*.webp` (flat button stickers — the
-  button body is always a CSS glass chip, never baked into the art).
-- Prefer showing over telling: anything a pre-reader must understand is
-  communicated with motion and pictures (mission box bounce, friends
-  flying to their goal chip), never with text.
+- Board pieces (`piece*`, `p*`), map scenery (`m<zone>_<nn>`) and the three
+  mermaids (`hero*`, `celeb*`) come from sprite sheets made with
+  `tools/stickers/`. Loose copies are in `public/mermaid-dots/assets/`.
+- The map is code: `drawSea` paints the bands and places stickers by a fixed
+  seed (`buildSeaLayout`); each sticker moves by its motion type
+  (`drawSticker`), and everything holds still under Reduce Motion.
+- Still in the earlier painted style, to be redrawn flat: Finn, Morgana,
+  King Nerio, the Maestro, the logo, the aquarium and the button icons.
