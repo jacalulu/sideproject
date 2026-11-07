@@ -1,5 +1,9 @@
 # Journey painting pipeline
 
+> **Retired (Nov 2026).** The map is now flat colour bands with animated
+> stickers (see `DESIGN.md` and `tools/stickers/`); the painting is no longer
+> in the game. Kept for reference.
+
 Makes the one continuous background painting for a 200-level chapter
 (780 x 28,600 px), then slices and embeds it in the game. Chapter 1 cost
 about $10 of OpenRouter credit, roughly half of it on experiments that

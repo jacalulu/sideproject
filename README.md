@@ -58,8 +58,9 @@ Pages deploy at `/privacy.html`.
 
 **How to play**
 - Start from the **adventure map**: a scrollable trail that dives down
-  through ONE continuous ocean painting, from the sunlit surface (level 1)
-  to the starlit trench (level 200). Tap any level
+  through eight ocean zones, from the sunlit surface (level 1) to the
+  starlit trench (level 200), with fish, jellies and kelp moving along the
+  way. Tap any level
   you've beaten to replay it (your stars and progress are never lost).
   After every win you return to the map and your mermaid hops forward
   to the next level on the trail.
@@ -116,7 +117,7 @@ over roughly the first 60 levels and then gently plateaus:
 | Board size              | 6×6 → 7×7 at level 12 → 8×8 at level 40 |
 | Collection goals        | 2 kinds → 3 kinds at level 8            |
 | Bubble traps            | start at level 5, up to 10 per board    |
-| Ocean zone (background) | 8 named zones of 25 levels inside one seamless 200-level painting (a *chapter*) |
+| Ocean zone (map)        | 8 named zones of 25 levels per 200-level *chapter* |
 
 Within each 5-level block difficulty rises then resets, so a tough level is
 followed by a breather. Every level is winnable and retries are always free.
@@ -130,36 +131,29 @@ often as their zone's breather levels. The same runs proved no level can
 deadlock (two dead ends found this way were fixed: anchors stuck over
 unmatched friends, and lone sand tiles).
 
-**The cast (the "Ocean Princess" theme).** Original characters, generated
-with Gemini Nano Banana in a painterly bioluminescent style and embedded in
-the game:
-- **Ophelia** and **Jaclyn** — pick your mermaid on the start screen; she
-  cheers when you win (with **Maestro** the lobster conductor).
+**The cast.** Original characters in the game's flat style:
+- **Ophelia**, **Violet** and **Daphne** (Violet and Daphne are identical
+  twins: Violet wears purple, Daphne yellow). Pick your mermaid on the start
+  screen; she rides the map with you and dances when you win.
 - **Finn** the worried little fish encourages you on the try-again screen.
 - **Morgana** the sea witch is why friends are bubble-trapped from level 5;
-  swipe them into a matching line to rescue them into your aquarium.
+  swipe them into a matching line to rescue them into your aquarium. Her
+  ink creeps across the board in the deepest zones.
 - **King Nerio** congratulates you when you finish each 25-level zone, and
-  throws a big splashy **Chapter Complete** party at level 200 (a whirlpool
-  to the next world).
+  throws a big splashy **Chapter Complete** party at level 200.
+- Finn, Morgana, King Nerio and the Maestro still use their earlier painted
+  art; redrawing them flat is next on the style guide's build plan.
 
-**The journey (backgrounds).** Each 200-level *chapter* is one continuous
-painting, 780 x 28,600 px, stored as 20 stacked slices (`bgJ00`..`bgJ19`,
-loose copies `assets/journey-NN.webp`). Gameplay shows a screen-sized window
-into it that drifts a little deeper with every level; the map scrolls through
-the whole thing with no seams. It was made by *outpainting*: each step feeds
-the bottom of the painting so far back to the image model and pastes the
-original pixels over the overlap, with an automatic seam detector that
-retries bad joins. The tooling is in `tools/journey/` (see its README), so
-the next chapter can be generated the same way. Levels past 200 currently
-replay chapter 1's painting behind a splash line ("hard break") until the
-next chapter's art exists (`CHAPTER_LEN` in `index.html`).
+**The look.** Flat, friendly and bright: six bold friends with simple faces
+floating on plain sand, shell-white controls, and a map made of flat colour
+bands with animated scenery stickers (see `DESIGN.md` and the style guide;
+art pipeline in `tools/stickers/`).
 
 **App icon.** Ophelia the mermaid (`AppIcon-512@2x.png` for iOS; PWA icons
 in `public/mermaid-dots/icon-*.png`).
 
-**Art & tech.** Painterly journey backgrounds, glowing painterly characters,
-an animated win screen (an 8-frame Nano Banana flipbook of your mermaid
-dancing), a looping background tune composed by Lyria (ducks under the
+**Art & tech.** Flat illustrated pieces and scenery from sprite sheets, a living
+map drawn in code, a looping background tune composed by Lyria (ducks under the
 narrated fun facts), pre-narrated fun facts — every host reads their own
 facts in their own voice (gpt-audio via OpenRouter: deep King Nerio,
 theatrical Maestro, shy Finn, velvet Morgana, bright mermaid; clips in
