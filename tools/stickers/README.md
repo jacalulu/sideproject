@@ -4,7 +4,7 @@ All art in the game's flat style comes from illustrated *sheets*: one image-mode
 call draws several pieces on a flat magenta background, then `slice.py` keys the
 magenta out and cuts each piece into its own transparent PNG. The style guide
 (linked in `DESIGN.md`) sets the rules; these scripts only make the pixels.
-Needs `OPENROUTER_API_KEY`. About $0.14 per sheet with `google/gemini-3-pro-image`.
+`gen_gemini.py` calls the Gemini API with `GEMINI_API_KEY` (preferred); `gen.py` does the same through OpenRouter with `OPENROUTER_API_KEY`. Same model (`gemini-3-pro-image`), about $0.14 per sheet. Add `ASPECT=1:1` (or `9:16`) for icons and splashes.
 
 ```
 export STICKER_WORK=/some/scratch/dir

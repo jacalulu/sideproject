@@ -70,14 +70,14 @@ Pages deploy at `/privacy.html`.
   the next. A bigger loop that wraps around other pieces bursts everything
   inside it like a bubble.
 - Collect the friends shown at the top before the wave counter 🌊 runs out.
-- From level 5, some friends are trapped in bubbles — swipe a bubbled friend
+- From level 3, some friends are trapped in bubbles — swipe a bubbled friend
   as part of your matching line to pop it free (a loop rescues every bubbled
   friend of that kind on the board). Rescued friends swim to your aquarium.
 - Run out of waves? Just try again — no penalty, ever. Miss the same level
   twice and **Finn's gift** offers 5 more waves on the same board.
 - Every zone brings something new to the board, introduced by a one-picture
   story card the first time it appears:
-  - **Sand** (Coral Cove, 26–50): clear friends on or next to a sandy tile
+  - **Sand** (a first taste from level 11, then all of Coral Cove, 26–50): clear friends on or next to a sandy tile
     to sweep it away.
   - **Anchors** (Kelp Forest, 51–75): they can't join a line; they sink a
     row every wave, faster if you clear underneath, and count when they
@@ -116,7 +116,7 @@ over roughly the first 60 levels and then gently plateaus:
 | Creature colors         | 4 → 5 at level 3 → 6 at level 14        |
 | Board size              | 6×6 → 7×7 at level 12 → 8×8 at level 40 |
 | Collection goals        | 2 kinds → 3 kinds at level 8            |
-| Bubble traps            | start at level 5, up to 10 per board    |
+| Bubble traps            | start at level 3, up to 12 per board    |
 | Ocean zone (map)        | 8 named zones of 25 levels per 200-level *chapter* |
 
 Within each 5-level block difficulty rises then resets, so a tough level is
@@ -130,6 +130,14 @@ actually costs), and the budgets are set so mechanic levels win about as
 often as their zone's breather levels. The same runs proved no level can
 deadlock (two dead ends found this way were fixed: anchors stuck over
 unmatched friends, and lone sand tiles).
+
+**Difficulty pass (Nov 2026, "more obstacles").** About 40% more of each
+piece, sand from level 11, and from Kelp Forest on two of every five levels
+bring back an older piece; every fifth level of a zone stays a breather.
+Spare waves were cut by about 6 per level and the per-piece wave costs
+retuned (sand 0.6, anchor 2.4, crate 1.25, oyster 2.5, ink 1.8). Bot results,
+4 runs of all 200 levels: win rate 56% -> 48% (levels 1-50: 66% -> 55%),
+obstacle pieces 1,348 -> 2,180, zero deadlocks.
 
 **The cast.** Original characters in the game's flat style:
 - **Ophelia**, **Violet** and **Daphne** (Violet and Daphne are identical
