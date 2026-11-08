@@ -53,5 +53,9 @@ grown-up reads aloud. Counts are always numerals (`9/15`).
 - The map is code: `drawSea` paints the bands and places stickers by a fixed
   seed (`buildSeaLayout`); each sticker moves by its motion type
   (`drawSticker`), and everything holds still under Reduce Motion.
-- Still in the earlier painted style, to be redrawn flat: Finn, Morgana,
-  King Nerio, the Maestro, the logo, the aquarium and the button icons.
+- Everything else is flat too since the Nov 2026 audit: the cast (Finn,
+  Morgana, King Nerio, the Maestro), icons and zone emblems, button icons,
+  the aquarium's friends, decorations and tank, the logo, the splash and
+  the app icon. Buttons are solid friend colours; cards, chips and pills are
+  shell white (the "STYLE GUIDE PASS" CSS block). Image calls now go to the
+  Gemini API directly (`GEMINI_API_KEY`); see `tools/stickers/`.
